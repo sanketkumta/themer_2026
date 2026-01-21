@@ -53,6 +53,17 @@ export default function LandingPage() {
   const [selectedFlightPhase, setSelectedFlightPhase] = useState('cruise'); // Default to cruise for landing page
   const currentRouteKey = 'landing-page'; // Simple route key for landing page
   
+  // State for recommended content cards (4 cards at bottom)
+  const [recommendedContentCards, setRecommendedContentCards] = useState([
+    { id: 0, title: 'A Podcast', imageDescription: 'podcast audio', imageUrl: null, type: 'podcast' },
+    { id: 1, title: 'A Movie', imageDescription: 'movie poster', imageUrl: null, type: 'movie' },
+    { id: 2, title: 'News', imageDescription: 'news article', imageUrl: null, type: 'news' },
+    { id: 3, title: 'Combo Food Offer', imageDescription: 'combo food meal', imageUrl: null, type: 'food' }
+  ]);
+  const [recommendedCardRemixedImages, setRecommendedCardRemixedImages] = useState({});
+  const [recommendedCardImageLoading, setRecommendedCardImageLoading] = useState({});
+  const [recommendedCardTitles, setRecommendedCardTitles] = useState({});
+  
   const formatTime = (minutes) => {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
@@ -375,7 +386,590 @@ export default function LandingPage() {
     );
   }, [mockThemeColor]);
   
+  // Initialize default images for recommended content cards on mount
+  useEffect(() => {
+    recommendedContentCards.forEach((card, index) => {
+      if (!card.imageUrl) {
+        const imageUrl = getPollinationsImage(card.imageDescription, mockThemeColor);
+        setRecommendedContentCards(prev => {
+          const updated = [...prev];
+          if (!updated[index].imageUrl) {
+            updated[index] = { ...updated[index], imageUrl };
+          }
+          return updated;
+        });
+      }
+    });
+  }, [mockThemeColor]); // Run when theme color is available
+  
+  // Helper functions for recommended card state management
+  const getRecommendedCardContent = (cardIndex) => {
+    return recommendedContentCards[cardIndex] || { title: 'Add content', imageDescription: '', imageUrl: null };
+  };
+  
+  const getRecommendedCardTitle = (cardIndex) => {
+    return recommendedCardTitles[cardIndex] || recommendedContentCards[cardIndex]?.title || 'Add content';
+  };
+  
+  const setRecommendedCardTitle = (cardIndex, title) => {
+    setRecommendedCardTitles(prev => ({ ...prev, [cardIndex]: title }));
+  };
+  
+  const getRecommendedCardRemixedImage = (cardIndex) => {
+    return recommendedCardRemixedImages[cardIndex] || null;
+  };
+  
+  const setRecommendedCardRemixedImage = (cardIndex, imageUrl) => {
+    setRecommendedCardRemixedImages(prev => ({ ...prev, [cardIndex]: imageUrl }));
+  };
+  
+  const isRecommendedCardImageLoading = (cardIndex) => {
+    return recommendedCardImageLoading[cardIndex] || false;
+  };
+  
+  const setRecommendedCardImageLoadingState = (cardIndex, isLoading) => {
+    setRecommendedCardImageLoading(prev => ({ ...prev, [cardIndex]: isLoading }));
+  };
+  
   const landingIn = formatTime(minutesLeft);
+  
+  // Helper function to get light card background color
+  const getLightCardBackgroundColor = (color) => {
+    if (color.includes('gradient')) {
+      return color;
+    }
+    if (color.startsWith('#')) {
+      const hex = color.slice(1);
+      const r = parseInt(hex.substr(0, 2), 16);
+      const g = parseInt(hex.substr(2, 2), 16);
+      const b = parseInt(hex.substr(4, 2), 16);
+      return `rgba(${r}, ${g}, ${b}, 0.1)`;
+    }
+    return 'rgba(255,255,255,0.1)';
+  };
+  
+  // Render function for recommended content cards
+  const renderRecommendedCard = (cardIndex) => {
+    const cardContent = getRecommendedCardContent(cardIndex);
+    const displayTitle = getRecommendedCardTitle(cardIndex);
+    const hasRemixedImage = !!getRecommendedCardRemixedImage(cardIndex);
+    const imageSrc = getRecommendedCardRemixedImage(cardIndex) || cardContent.imageUrl;
+    
+    const cardStyle = {
+      width: '100%',
+      height: '160px',
+      background: getLightCardBackgroundColor(mockThemeColor),
+      borderTopLeftRadius: '8px',
+      borderTopRightRadius: '8px',
+      borderBottomLeftRadius: '8px',
+      borderBottomRightRadius: '8px',
+      border: 'none',
+      marginTop: '1px'
+    };
+    
+    return (
+      <div
+        key={`recommended-card-${cardIndex}`}
+        className="overflow-clip relative shrink-0 flex items-center justify-center backdrop-blur-[10px] backdrop-filter group hover:shadow-[0_0_0_3px_#1E1E1E] cursor-pointer"
+        style={cardStyle}
+        onMouseEnter={(e) => {
+          if (window.__recommendedTooltipLocked) return;
+          const tooltip = document.createElement('div');
+          tooltip.style.cssText = `
+            position: fixed;
+            background: #1E1E1E;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 2147483647;
+            pointer-events: auto;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            left: ${e.clientX + 18}px;
+            top: ${e.clientY + 18}px;
+          `;
+          tooltip.id = `recommended-tooltip-${cardIndex}`;
+          tooltip.innerHTML = `
+            <span id="recommended-tooltip-content-text-${cardIndex}" style="cursor:pointer;padding:2px 4px;border-radius:4px">Content</span>
+            <span> | </span>
+            <span id="recommended-tooltip-performance-text-${cardIndex}" style="cursor:pointer;padding:2px 4px;border-radius:4px">Performance</span>
+            <span> |</span>
+            <button id="recommended-tooltip-close-${cardIndex}" aria-label="Close" style="background:transparent;border:none;color:white;opacity:.85;cursor:pointer;padding:0 2px;line-height:1">✕</button>
+          `;
+          const existing = document.getElementById(`recommended-tooltip-${cardIndex}`);
+          if (existing) existing.remove();
+          document.body.appendChild(tooltip);
+          
+          const closeBtn = document.getElementById(`recommended-tooltip-close-${cardIndex}`);
+          if (closeBtn) {
+            closeBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const t = document.getElementById(`recommended-tooltip-${cardIndex}`);
+              if (t) t.remove();
+              const panel = document.getElementById(`recommended-locked-remix-panel-${cardIndex}`);
+              if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+              const performancePanel = document.getElementById(`recommended-performance-empty-panel-${cardIndex}`);
+              if (performancePanel && performancePanel.parentNode) performancePanel.parentNode.removeChild(performancePanel);
+              window.__recommendedTooltipLocked = false;
+            });
+          }
+          
+          // Add click handler for Content text
+          const contentText = document.getElementById(`recommended-tooltip-content-text-${cardIndex}`);
+          if (contentText) {
+            contentText.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const performancePanel = document.getElementById(`recommended-performance-empty-panel-${cardIndex}`);
+              if (performancePanel && performancePanel.parentNode) performancePanel.parentNode.removeChild(performancePanel);
+              contentText.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+              contentText.style.color = '#FFFFFF';
+              const performanceText = document.getElementById(`recommended-tooltip-performance-text-${cardIndex}`);
+              if (performanceText) {
+                performanceText.style.backgroundColor = 'transparent';
+                performanceText.style.color = '#FFFFFF';
+              }
+              // Check if panel already exists (created by card click), if so, just show it
+              const existingPanel = document.getElementById(`recommended-locked-remix-panel-${cardIndex}`);
+              if (existingPanel) {
+                // Panel already exists, just ensure it's visible
+                return;
+              }
+              const tooltip = document.getElementById(`recommended-tooltip-${cardIndex}`);
+              if (tooltip) {
+                // Use requestAnimationFrame to ensure tooltip is fully positioned
+                requestAnimationFrame(() => {
+                  const rect = tooltip.getBoundingClientRect();
+                  const contentDataLocal = getRecommendedCardContent(cardIndex);
+                  const remixContainer = document.createElement('div');
+                  remixContainer.id = `recommended-locked-remix-panel-${cardIndex}`;
+                  remixContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
+                  // Position bubble 8px above tooltip: bubble bottom = rect.top - 8, bubble top = bubble bottom - height
+                  // Bubble height is approximately 150px, so: rect.top - 8 - 150 = rect.top - 158
+                  // Use same calculation for consistency across all cards
+                  const bubbleTop = rect.top - 158;
+                  remixContainer.style.cssText = `position:fixed;left:${rect.left}px;top:${bubbleTop}px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px`;
+                
+                const textDiv = document.createElement('div');
+                textDiv.className = 'w-full';
+                const textP = document.createElement('p');
+                textP.className = 'whitespace-pre-wrap break-words text-md leading-6 text-white m-0';
+                
+                const changeTitleSpan = document.createElement('span');
+                changeTitleSpan.className = 'text-gray-300 select-none';
+                changeTitleSpan.style.marginRight = '8px';
+                changeTitleSpan.textContent = 'Change title to';
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.id = `recommended-locked-tooltip-title-${cardIndex}`;
+                titleSpan.role = 'textbox';
+                titleSpan.setAttribute('aria-label', 'title');
+                titleSpan.contentEditable = true;
+                titleSpan.className = 'outline-none';
+                titleSpan.spellCheck = false;
+                titleSpan.style.cssText = 'text-decoration:underline dotted;text-decoration-color:rgba(156,163,175,0.8);text-underline-offset:6px;caret-color:transparent;margin-right:8px';
+                titleSpan.textContent = getRecommendedCardTitle(cardIndex) || contentDataLocal.title || 'Add content';
+                
+                const describeSpan = document.createElement('span');
+                describeSpan.className = 'text-gray-300 select-none';
+                describeSpan.style.marginRight = '8px';
+                describeSpan.textContent = 'describe image of';
+                
+                const descSpan = document.createElement('span');
+                descSpan.id = `recommended-locked-tooltip-desc-${cardIndex}`;
+                descSpan.role = 'textbox';
+                descSpan.setAttribute('aria-label', 'image description');
+                descSpan.contentEditable = true;
+                descSpan.className = 'outline-none';
+                descSpan.spellCheck = false;
+                descSpan.style.cssText = 'text-decoration:underline dotted;text-decoration-color:rgba(156,163,175,0.8);text-underline-offset:6px;caret-color:auto';
+                descSpan.textContent = contentDataLocal.imageDescription || contentDataLocal.title || '';
+                
+                textP.appendChild(changeTitleSpan);
+                textP.appendChild(titleSpan);
+                textP.appendChild(describeSpan);
+                textP.appendChild(descSpan);
+                textDiv.appendChild(textP);
+                
+                const buttonsDiv = document.createElement('div');
+                buttonsDiv.className = 'flex gap-2';
+                
+                const lockedRemixBtn = document.createElement('button');
+                lockedRemixBtn.id = `recommended-locked-tooltip-remix-${cardIndex}`;
+                lockedRemixBtn.className = 'px-4 py-2 rounded-lg font-semibold text-xs uppercase transition-all duration-200 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed';
+                lockedRemixBtn.style.cssText = 'background-color:#10B981;color:white;border:1px solid rgba(255,255,255,0.3)';
+                lockedRemixBtn.textContent = '🎲 Remix Style';
+                
+                const lockedSaveBtn = document.createElement('button');
+                lockedSaveBtn.id = `recommended-locked-tooltip-save-${cardIndex}`;
+                lockedSaveBtn.className = 'px-4 py-2 rounded-lg font-semibold text-xs uppercase transition-all duration-200 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed';
+                lockedSaveBtn.style.cssText = 'background-color:#10B981;color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(10px)';
+                lockedSaveBtn.textContent = '💾 Save';
+                
+                buttonsDiv.appendChild(lockedRemixBtn);
+                buttonsDiv.appendChild(lockedSaveBtn);
+                
+                remixContainer.appendChild(textDiv);
+                remixContainer.appendChild(buttonsDiv);
+                
+                document.body.appendChild(remixContainer);
+                
+                const titleEl = remixContainer.querySelector(`#recommended-locked-tooltip-title-${cardIndex}`);
+                const descEl = remixContainer.querySelector(`#recommended-locked-tooltip-desc-${cardIndex}`);
+                const remixBtn = remixContainer.querySelector(`#recommended-locked-tooltip-remix-${cardIndex}`);
+                const saveBtn = remixContainer.querySelector(`#recommended-locked-tooltip-save-${cardIndex}`);
+                
+                if (titleEl) {
+                  titleEl.addEventListener('input', (e) => {
+                    const el = e.currentTarget;
+                    const raw = el.innerText || '';
+                    const clamped = raw.length > 50 ? raw.slice(0, 50) : raw;
+                    if (clamped !== raw) el.innerText = clamped;
+                    setRecommendedCardTitle(cardIndex, clamped);
+                  });
+                  titleEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); return; }
+                  });
+                }
+                if (descEl) {
+                  descEl.addEventListener('input', (e) => {
+                    const el = e.currentTarget;
+                    const raw = el.innerText || '';
+                    const clamped = raw.length > 100 ? raw.slice(0, 100) : raw;
+                    if (clamped !== raw) el.innerText = clamped;
+                  });
+                  descEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); return; }
+                  });
+                }
+                
+                const triggerRemix = () => {
+                  try {
+                    const imageDescription = (descEl?.innerText || contentDataLocal.imageDescription || contentDataLocal.title || 'content');
+                    const newImageUrl = getPollinationsImage(imageDescription, mockThemeColor, { randomize: true });
+                    const timestamp = Date.now();
+                    const separator = newImageUrl.includes('?') ? '&' : '?';
+                    const newUrl = `${newImageUrl}${separator}t=${timestamp}`;
+                    setRecommendedCardRemixedImage(cardIndex, newUrl);
+                    setRecommendedCardImageLoadingState(cardIndex, true);
+                    console.log('Recommended card remix generated', { cardIndex, imageDescription, newUrl });
+                  } catch (err) {
+                    console.error('Recommended card remix failed', err);
+                  }
+                };
+                
+                if (remixBtn) remixBtn.addEventListener('click', (ev) => { ev.stopPropagation(); triggerRemix(); });
+                if (saveBtn) saveBtn.addEventListener('click', (ev) => { 
+                  ev.stopPropagation();
+                  const titleValue = titleEl?.innerText || getRecommendedCardTitle(cardIndex);
+                  const descValue = descEl?.innerText || contentDataLocal.imageDescription;
+                  setRecommendedCardTitle(cardIndex, titleValue);
+                  setRecommendedContentCards(prev => {
+                    const updated = [...prev];
+                    updated[cardIndex] = { ...updated[cardIndex], title: titleValue, imageDescription: descValue };
+                    return updated;
+                  });
+                  triggerRemix();
+                });
+                });
+              }
+            });
+          }
+          
+          // Add click handler for Performance text
+          const performanceText = document.getElementById(`recommended-tooltip-performance-text-${cardIndex}`);
+          if (performanceText) {
+            performanceText.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const panel = document.getElementById(`recommended-locked-remix-panel-${cardIndex}`);
+              if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+              performanceText.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+              performanceText.style.color = '#FFFFFF';
+              const contentText = document.getElementById(`recommended-tooltip-content-text-${cardIndex}`);
+              if (contentText) {
+                contentText.style.backgroundColor = 'transparent';
+                contentText.style.color = '#FFFFFF';
+              }
+              const tooltip = document.getElementById(`recommended-tooltip-${cardIndex}`);
+              if (tooltip) {
+                const rect = tooltip.getBoundingClientRect();
+                const emptyContainer = document.createElement('div');
+                emptyContainer.id = `recommended-performance-empty-panel-${cardIndex}`;
+                emptyContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
+                // Position bubble 8px above tooltip: bubble bottom = rect.top - 8, bubble top = bubble bottom - height
+                // Bubble height is approximately 150px, so: rect.top - 8 - 150 = rect.top - 158
+                emptyContainer.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top - 158}px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px`;
+                
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'w-full text-center';
+                emptyDiv.innerHTML = '<p class="text-white text-sm opacity-70">Performance panel coming soon...</p>';
+                emptyContainer.appendChild(emptyDiv);
+                
+                const existingPanel = document.getElementById(`recommended-performance-empty-panel-${cardIndex}`);
+                if (existingPanel && existingPanel.parentNode) {
+                  existingPanel.parentNode.removeChild(existingPanel);
+                }
+                
+                document.body.appendChild(emptyContainer);
+              }
+            });
+          }
+          if (!window.__recommendedTooltipLocked) window.__recommendedTooltipLocked = false;
+        }}
+        onMouseMove={(e) => {
+          const tooltip = document.getElementById(`recommended-tooltip-${cardIndex}`);
+          if (!tooltip || window.__recommendedTooltipLocked) return;
+          tooltip.style.left = `${e.clientX + 18}px`;
+          tooltip.style.top = `${e.clientY + 18}px`;
+        }}
+        onMouseLeave={() => {
+          const tooltip = document.getElementById(`recommended-tooltip-${cardIndex}`);
+          if (tooltip && !window.__recommendedTooltipLocked) tooltip.remove();
+        }}
+        onClick={(e) => {
+          setTimeout(() => {
+            const tooltip = document.getElementById(`recommended-tooltip-${cardIndex}`);
+            if (tooltip) {
+              tooltip.style.left = `${e.clientX + 12}px`;
+              tooltip.style.top = `${e.clientY + 12}px`;
+              const contentText = tooltip.querySelector(`#recommended-tooltip-content-text-${cardIndex}`);
+              if (contentText) {
+                contentText.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                contentText.style.color = '#FFFFFF';
+                contentText.style.padding = '2px 4px';
+                contentText.style.borderRadius = '4px';
+              }
+            }
+            window.__recommendedTooltipLocked = true;
+            
+            // Show remix panel immediately on click (same as content cards)
+            try {
+              const existingPanel = document.getElementById(`recommended-locked-remix-panel-${cardIndex}`);
+              if (existingPanel && existingPanel.parentNode) {
+                existingPanel.parentNode.removeChild(existingPanel);
+              }
+              const t = document.getElementById(`recommended-tooltip-${cardIndex}`);
+              if (!t) return;
+              // Use requestAnimationFrame to ensure tooltip is fully positioned before calculating
+              requestAnimationFrame(() => {
+                const rect = t.getBoundingClientRect();
+                const contentDataLocal = getRecommendedCardContent(cardIndex);
+                
+                const remixContainer = document.createElement('div');
+                remixContainer.id = `recommended-locked-remix-panel-${cardIndex}`;
+                remixContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
+                // Position bubble 8px above tooltip: bubble bottom = rect.top - 8, bubble top = bubble bottom - height
+                // Bubble height is approximately 150px, so: rect.top - 8 - 150 = rect.top - 158
+                // Ensure consistent spacing for all cards - use same calculation as first card
+                const bubbleTop = rect.top - 158;
+                remixContainer.style.cssText = `position:fixed;left:${rect.left}px;top:${bubbleTop}px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px`;
+              
+              const textDiv = document.createElement('div');
+              textDiv.className = 'w-full';
+              const textP = document.createElement('p');
+              textP.className = 'whitespace-pre-wrap break-words text-md leading-6 text-white m-0';
+              
+              const changeTitleSpan = document.createElement('span');
+              changeTitleSpan.className = 'text-gray-300 select-none';
+              changeTitleSpan.style.marginRight = '8px';
+              changeTitleSpan.textContent = 'Change title to';
+              
+              const titleSpan = document.createElement('span');
+              titleSpan.id = `recommended-locked-tooltip-title-${cardIndex}`;
+              titleSpan.role = 'textbox';
+              titleSpan.setAttribute('aria-label', 'title');
+              titleSpan.contentEditable = true;
+              titleSpan.className = 'outline-none';
+              titleSpan.spellCheck = false;
+              titleSpan.style.cssText = 'text-decoration:underline dotted;text-decoration-color:rgba(156,163,175,0.8);text-underline-offset:6px;caret-color:transparent;margin-right:8px';
+              titleSpan.textContent = getRecommendedCardTitle(cardIndex) || contentDataLocal.title || 'Add content';
+              
+              const describeSpan = document.createElement('span');
+              describeSpan.className = 'text-gray-300 select-none';
+              describeSpan.style.marginRight = '8px';
+              describeSpan.textContent = 'describe image of';
+              
+              const descSpan = document.createElement('span');
+              descSpan.id = `recommended-locked-tooltip-desc-${cardIndex}`;
+              descSpan.role = 'textbox';
+              descSpan.setAttribute('aria-label', 'image description');
+              descSpan.contentEditable = true;
+              descSpan.className = 'outline-none';
+              descSpan.spellCheck = false;
+              descSpan.style.cssText = 'text-decoration:underline dotted;text-decoration-color:rgba(156,163,175,0.8);text-underline-offset:6px;caret-color:auto';
+              descSpan.textContent = contentDataLocal.imageDescription || contentDataLocal.title || '';
+              
+              textP.appendChild(changeTitleSpan);
+              textP.appendChild(titleSpan);
+              textP.appendChild(describeSpan);
+              textP.appendChild(descSpan);
+              textDiv.appendChild(textP);
+              
+              const buttonsDiv = document.createElement('div');
+              buttonsDiv.className = 'flex gap-2';
+              
+              const lockedRemixBtn = document.createElement('button');
+              lockedRemixBtn.id = `recommended-locked-tooltip-remix-${cardIndex}`;
+              lockedRemixBtn.className = 'px-4 py-2 rounded-lg font-semibold text-xs uppercase transition-all duration-200 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed';
+              lockedRemixBtn.style.cssText = 'background-color:#10B981;color:white;border:1px solid rgba(255,255,255,0.3)';
+              lockedRemixBtn.textContent = '🎲 Remix Style';
+              
+              const lockedSaveBtn = document.createElement('button');
+              lockedSaveBtn.id = `recommended-locked-tooltip-save-${cardIndex}`;
+              lockedSaveBtn.className = 'px-4 py-2 rounded-lg font-semibold text-xs uppercase transition-all duration-200 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed';
+              lockedSaveBtn.style.cssText = 'background-color:#10B981;color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(10px)';
+              lockedSaveBtn.textContent = '💾 Save';
+              
+              buttonsDiv.appendChild(lockedRemixBtn);
+              buttonsDiv.appendChild(lockedSaveBtn);
+              
+              remixContainer.appendChild(textDiv);
+              remixContainer.appendChild(buttonsDiv);
+              
+              document.body.appendChild(remixContainer);
+              
+              const titleEl = remixContainer.querySelector(`#recommended-locked-tooltip-title-${cardIndex}`);
+              const descEl = remixContainer.querySelector(`#recommended-locked-tooltip-desc-${cardIndex}`);
+              const remixBtn = remixContainer.querySelector(`#recommended-locked-tooltip-remix-${cardIndex}`);
+              const saveBtn = remixContainer.querySelector(`#recommended-locked-tooltip-save-${cardIndex}`);
+              
+              if (titleEl) {
+                titleEl.addEventListener('input', (e) => {
+                  const el = e.currentTarget;
+                  const raw = el.innerText || '';
+                  const clamped = raw.length > 50 ? raw.slice(0, 50) : raw;
+                  if (clamped !== raw) el.innerText = clamped;
+                  setRecommendedCardTitle(cardIndex, clamped);
+                });
+                titleEl.addEventListener('keydown', (e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); return; }
+                });
+              }
+              if (descEl) {
+                descEl.addEventListener('input', (e) => {
+                  const el = e.currentTarget;
+                  const raw = el.innerText || '';
+                  const clamped = raw.length > 100 ? raw.slice(0, 100) : raw;
+                  if (clamped !== raw) el.innerText = clamped;
+                });
+                descEl.addEventListener('keydown', (e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); return; }
+                });
+              }
+              
+              const triggerRemix = () => {
+                try {
+                  const imageDescription = (descEl?.innerText || contentDataLocal.imageDescription || contentDataLocal.title || 'content');
+                  const newImageUrl = getPollinationsImage(imageDescription, mockThemeColor, { randomize: true });
+                  const timestamp = Date.now();
+                  const separator = newImageUrl.includes('?') ? '&' : '?';
+                  const newUrl = `${newImageUrl}${separator}t=${timestamp}`;
+                  setRecommendedCardRemixedImage(cardIndex, newUrl);
+                  setRecommendedCardImageLoadingState(cardIndex, true);
+                  console.log('Recommended card remix generated', { cardIndex, imageDescription, newUrl });
+                } catch (err) {
+                  console.error('Recommended card remix failed', err);
+                }
+              };
+              
+              if (remixBtn) remixBtn.addEventListener('click', (ev) => { ev.stopPropagation(); triggerRemix(); });
+              if (saveBtn) saveBtn.addEventListener('click', (ev) => { 
+                ev.stopPropagation();
+                const titleValue = titleEl?.innerText || getRecommendedCardTitle(cardIndex);
+                const descValue = descEl?.innerText || contentDataLocal.imageDescription;
+                setRecommendedCardTitle(cardIndex, titleValue);
+                setRecommendedContentCards(prev => {
+                  const updated = [...prev];
+                  updated[cardIndex] = { ...updated[cardIndex], title: titleValue, imageDescription: descValue };
+                  return updated;
+                });
+                triggerRemix();
+              });
+              });
+            } catch {}
+          }, 0);
+        }}
+      >
+        {/* Image area */}
+        {imageSrc && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-full h-full relative">
+              {/* Loading spinner */}
+              {isRecommendedCardImageLoading(cardIndex) && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+                  <div className="flex flex-col items-center space-y-2">
+                    <div className="w-6 h-6 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-xs text-gray-600">Loading image...</span>
+                  </div>
+                </div>
+              )}
+              
+              {/* Image */}
+              <img 
+                src={imageSrc}
+                alt={cardContent.imageDescription || cardContent.title}
+                className="w-full h-full object-cover rounded-lg"
+                style={{ display: isRecommendedCardImageLoading(cardIndex) ? 'none' : 'block' }}
+                onLoad={() => {
+                  console.log('=== RECOMMENDED CARD IMAGE LOADED ===', { 
+                    cardIndex, 
+                    src: imageSrc,
+                    wasRemixed: hasRemixedImage
+                  });
+                  setRecommendedCardImageLoadingState(cardIndex, false);
+                }}
+                onError={(e) => {
+                  console.log('=== RECOMMENDED CARD IMAGE LOAD ERROR ===', { 
+                    src: e.target.src,
+                    cardIndex
+                  });
+                  setRecommendedCardImageLoadingState(cardIndex, false);
+                  e.target.style.display = 'none';
+                }}
+                onLoadStart={() => {
+                  console.log('=== RECOMMENDED CARD IMAGE LOAD START ===', { 
+                    cardIndex, 
+                    src: imageSrc
+                  });
+                  setRecommendedCardImageLoadingState(cardIndex, true);
+                }}
+              />
+            </div>
+          </div>
+        )}
+        
+        {/* Bottom rectangle with text field */}
+        <div 
+          className="absolute bottom-0 left-0 right-0 z-10 p-2 backdrop-blur-md backdrop-filter shadow-none"
+          style={{ 
+            backgroundColor: getReadableOnColor(mockThemeColor) + 'CC',
+            minHeight: '40px',
+            display: 'flex',
+            alignItems: 'center',
+            borderTopLeftRadius: '0px',
+            borderTopRightRadius: '0px',
+            borderBottomLeftRadius: '8px',
+            borderBottomRightRadius: '8px'
+          }}
+        >
+          <p className="block font-semibold text-center uppercase" 
+             style={{ 
+               fontSize: '12px', 
+               lineHeight: '16px', 
+               margin: 0,
+               ...(mockThemeColor.includes('gradient') 
+                 ? { background: mockThemeColor, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }
+                 : { color: mockThemeColor }
+               )
+             }}>
+            {displayTitle}
+          </p>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#E9EFF5' }}>
@@ -513,88 +1107,12 @@ export default function LandingPage() {
                   Recommended for you
                 </p>
                 
-                {/* 4 Recommended Tiles */}
+                {/* 4 Recommended Content Cards */}
                 <div
                   className="grid grid-cols-4 gap-6"
                   style={{ width: '100%' }}
                 >
-                  {recommendedTiles.map((tile) => {
-                    return (
-                      <div
-                        key={tile.id}
-                        draggable
-                        className="bg-black overflow-clip relative shrink-0 flex items-center justify-center cursor-move hover:opacity-80 transition-opacity group"
-                        style={{ 
-                          width: '100%', 
-                          height: '160px',
-                          background: getLightThemeColor(0.1),
-                          borderTopLeftRadius: '8px',
-                          borderTopRightRadius: '8px',
-                          borderBottomLeftRadius: '0px',
-                          borderBottomRightRadius: '0px',
-                          opacity: draggedTile === tile.id ? 0.5 : 1
-                        }}
-                                              onDragStart={(e) => handleDragStart(e, tile.id)}
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, tile.id)}
-                        onDragEnd={handleDragEnd}
-                      >
-                        
-                        {/* Bottom rectangle with text field - same style as promo cards */}
-                        <div 
-                          className="absolute bottom-0 left-0 right-0 z-10 p-2"
-                          style={{ 
-                            backgroundColor: getReadableOnColor(mockThemeColor),
-                            minHeight: '40px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            borderTopLeftRadius: '0px',
-                            borderTopRightRadius: '0px',
-                            borderBottomLeftRadius: '0px',
-                            borderBottomRightRadius: '0px'
-                          }}
-                        >
-                          <p className="block font-semibold text-center uppercase" 
-                             style={{ 
-                               fontSize: '12px', 
-                               lineHeight: '16px', 
-                               margin: 0,
-                               ...(mockThemeColor.includes('gradient') 
-                                 ? { background: mockThemeColor, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }
-                                 : { color: mockThemeColor }
-                               )
-                             }}>
-                            Add content
-                          </p>
-                        </div>
-                      
-                      {/* Edit button for content cards */}
-                      <button
-                        className="absolute top-2 right-2 px-3 py-1 text-sm font-medium text-white transition-colors opacity-0 group-hover:opacity-100"
-                        style={{ 
-                          backgroundColor: '#1f2937', // Dark container color
-                          borderTopLeftRadius: '0px', 
-                          borderTopRightRadius: '9999px', 
-                          borderBottomLeftRadius: '9999px', 
-                          borderBottomRightRadius: '9999px' 
-                        }}
-                        onMouseEnter={(e) => {
-                          // Use a slightly lighter version of the dark container color for hover
-                          e.target.style.backgroundColor = '#374151'; // Slightly lighter dark gray
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.backgroundColor = '#1f2937'; // Dark container color
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          console.log('Edit content card clicked', tile.id);
-                        }}
-                      >
-                        Edit content card
-                      </button>
-                    </div>
-                  );
-                })}
+                  {[0, 1, 2, 3].map((cardIndex) => renderRecommendedCard(cardIndex))}
                 </div>
               </div>
             </div>
