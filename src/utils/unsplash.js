@@ -1,41 +1,91 @@
 // Helper function to get Pollinations AI generated images for content cards and promo cards
+// Updated to use the current Pollinations image URL pattern.
 export const getPollinationsImage = (description, themeColor = null, options = {}) => {
-  console.log('=== GETTING POLLINATIONS AI IMAGE ===', { description, themeColor });
-  
+  if (!description || typeof description !== 'string') {
+    console.warn('getPollinationsImage called with invalid description', { description });
+    return null;
+  }
+
+  console.log('=== GETTING POLLINATIONS AI IMAGE ===', { description, themeColor, options });
+
   // Clean and optimize the description for AI image generation
   const cleanDescription = description
     .toLowerCase()
     .replace(/[^\w\s]/g, ' ') // Remove special characters
     .replace(/\s+/g, ' ') // Replace multiple spaces with single space
     .trim();
-  
-  // Create a more detailed prompt for better image generation
+
+  // Base enhanced prompt
   let enhancedPrompt = `high quality, professional, ${cleanDescription}, modern, clean, 4k resolution`;
-  
-  // Add theme color background for smartphone device images
+
+  // Add theme color background for smartphone/device style images
   if (themeColor && cleanDescription.includes('smartphone device')) {
-    // Convert hex color to a more descriptive color name for AI
     const colorName = getColorName(themeColor);
     enhancedPrompt = `high quality, professional, ${cleanDescription}, ${colorName} background, modern, clean, 4k resolution`;
   }
-  
-  // Seed handling: deterministic by default, randomized when requested
-  const { seed, randomize } = options || {};
-  const deterministicSeed = Math.abs(description.split('').reduce((a, b) => a + b.charCodeAt(0), 0));
-  const chosenSeed = typeof seed === 'number' ? seed : (randomize ? Math.floor(Math.random() * 1_000_000_000) : deterministicSeed);
 
-  // Pollinations AI API endpoint
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=416&height=200&nologo=true&seed=${chosenSeed}`;
-  
-  console.log('=== POLLINATIONS AI URL GENERATED ===', { 
+  // Options with sensible defaults, while preserving existing behaviour where possible
+  const {
+    seed,
+    randomize,
+    width = 416,
+    height = 200,
+    model = 'flux', // current recommended default model
+    nologo = true,
+    enhance = false
+  } = options || {};
+
+  // Seed handling: deterministic by default, randomized when requested
+  const deterministicSeed = Math.abs(
+    description.split('').reduce((a, b) => a + b.charCodeAt(0), 0)
+  );
+  const chosenSeed =
+    typeof seed === 'number'
+      ? seed
+      : randomize
+      ? Math.floor(Math.random() * 1_000_000_000)
+      : deterministicSeed;
+
+  // Build query params according to current Pollinations pattern
+  const params = new URLSearchParams();
+  params.set('width', width);
+  params.set('height', height);
+  params.set('model', model);
+  if (chosenSeed !== undefined && chosenSeed !== null) {
+    params.set('seed', String(chosenSeed));
+  }
+  if (nologo) {
+    params.set('nologo', 'true');
+  }
+  if (enhance) {
+    params.set('enhance', 'true');
+  }
+
+  // Attach API key if available (prefer env var; falls back to publishable key provided by user)
+  const apiKey = process.env.REACT_APP_POLLINATIONS_KEY || 'pk_85ToFCr181MZE7An';
+  if (apiKey) {
+    params.set('key', apiKey);
+  }
+
+  // Current Pollinations image endpoint pattern using gen.pollinations.ai
+  const pollinationsUrl = `https://gen.pollinations.ai/image/${encodeURIComponent(
+    enhancedPrompt
+  )}?${params.toString()}`;
+
+  console.log('=== POLLINATIONS AI URL GENERATED ===', {
     originalDescription: description,
     cleanDescription,
     enhancedPrompt,
     themeColor,
     chosenSeed,
-    pollinationsUrl 
+    width,
+    height,
+    model,
+    nologo,
+    enhance,
+    pollinationsUrl
   });
-  
+
   return pollinationsUrl;
 };
 

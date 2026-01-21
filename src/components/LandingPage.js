@@ -4,6 +4,7 @@ import { getReadableOnColor } from '../utils/color';
 import FlightJourneyBar from './FlightJourneyBar';
 import FlightProgress from './FlightProgress';
 import Component3Cards from './Component3Cards';
+import { getPollinationsImage } from '../utils/unsplash';
 
 // Helper function to generate AI images for content cards
 
@@ -45,6 +46,12 @@ export default function LandingPage() {
     { id: 4, color: themeColors[0] }
   ]);
   const [draggedTile, setDraggedTile] = useState(null);
+  
+  // State for promo card content storage (for image generation)
+  const [promoCardContents, setPromoCardContents] = useState({});
+  const [colorPromptSaved, setColorPromptSaved] = useState(true); // Set to true for landing page demo
+  const [selectedFlightPhase, setSelectedFlightPhase] = useState('cruise'); // Default to cruise for landing page
+  const currentRouteKey = 'landing-page'; // Simple route key for landing page
   
   const formatTime = (minutes) => {
     const h = Math.floor(minutes / 60);
@@ -138,6 +145,71 @@ export default function LandingPage() {
   };
 
   const handleMiddleCardPromptSubmit = (promptText, elementType, elementData, positionKey) => {
+    console.log('=== MIDDLE CARD PROMPT SUBMIT ===', {
+      promptText,
+      elementType,
+      elementData,
+      positionKey
+    });
+    
+    // Parse the prompt text if it's in format "text:...,image:..."
+    let cardText = '';
+    let imageDescription = '';
+    
+    if (elementType === 'promo-card' && promptText.includes('text:') && promptText.includes('image:')) {
+      // Parse format: "text:Title,image:Description"
+      const textMatch = promptText.match(/text:([^,]+)/);
+      const imageMatch = promptText.match(/image:([^,]+)/);
+      cardText = textMatch ? textMatch[1].trim() : '';
+      imageDescription = imageMatch ? imageMatch[1].trim() : '';
+    } else {
+      // Simple text prompt - use as both text and image description
+      cardText = promptText.trim();
+      imageDescription = promptText.trim();
+    }
+    
+    // Determine which card index to update (middle card is index 1)
+    const cardIndex = elementData?.cardIndex !== undefined ? elementData.cardIndex : 1;
+    
+    // Generate Pollinations image URL if we have an image description
+    let imageUrl = null;
+    if (imageDescription) {
+      imageUrl = getPollinationsImage(imageDescription, mockThemeColor);
+      console.log('=== GENERATED POLLINATIONS IMAGE ===', {
+        imageDescription,
+        imageUrl,
+        cardIndex,
+        themeColor: mockThemeColor
+      });
+    }
+    
+    // Store the content in promoCardContents
+    // Use phase-specific key: 'landing-page-cruise'
+    const phaseKey = `${currentRouteKey}-${selectedFlightPhase}`;
+    setPromoCardContents(prev => {
+      const newContents = { ...prev };
+      if (!newContents[phaseKey]) {
+        newContents[phaseKey] = [];
+      }
+      // Ensure array has enough elements
+      while (newContents[phaseKey].length <= cardIndex) {
+        newContents[phaseKey].push(null);
+      }
+      // Update the specific card
+      newContents[phaseKey][cardIndex] = {
+        text: cardText || 'Add experience',
+        image: imageDescription || '',
+        backgroundImage: imageUrl || ''
+      };
+      console.log('=== UPDATED PROMO CARD CONTENTS ===', {
+        phaseKey,
+        cardIndex,
+        content: newContents[phaseKey][cardIndex],
+        allContents: newContents
+      });
+      return newContents;
+    });
+    
     setShowMiddleCardPrompt(false);
     setMiddleCardPromptClosed(true);
     handleMiddleCardPromptClose(true);
@@ -408,6 +480,19 @@ export default function LandingPage() {
                 animationProgress={animationProgress}
                 cruiseLabelShown={cruiseLabelShown}
                 middleCardPromptClosed={middleCardPromptClosed}
+                isThemeBuildStarted={true}
+                colorPromptSaved={colorPromptSaved}
+                origin={mockOrigin}
+                destination={mockDestination}
+                selectedFlightPhase={selectedFlightPhase}
+                promoCardContents={promoCardContents}
+                colorPromptClosedWithoutSave={false}
+                currentRouteKey={currentRouteKey}
+                isModifyClicked={false}
+                selectedDates={[]}
+                isCurrentThemeFestive={() => false}
+                getRouteSelectedThemeChip={() => null}
+                selectedProfile={null}
               />
               
               {/* Debug Info */}
