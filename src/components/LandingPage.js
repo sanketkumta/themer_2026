@@ -858,21 +858,7 @@ export default function LandingPage() {
         }}
         onClick={(e) => {
           setTimeout(() => {
-            const tooltip = document.getElementById(`recommended-tooltip-${cardIndex}`);
-            if (tooltip) {
-              tooltip.style.left = `${e.clientX + 12}px`;
-              tooltip.style.top = `${e.clientY + 12}px`;
-              const contentText = tooltip.querySelector(`#recommended-tooltip-content-text-${cardIndex}`);
-              if (contentText) {
-                contentText.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-                contentText.style.color = '#FFFFFF';
-                contentText.style.padding = '2px 4px';
-                contentText.style.borderRadius = '4px';
-              }
-            }
-            window.__recommendedTooltipLocked = true;
-            
-            // Close any promo card prompt bubbles
+            // Close any promo card prompt bubbles first
             const promoTooltip = document.getElementById('custom-tooltip');
             if (promoTooltip && promoTooltip.parentNode) promoTooltip.parentNode.removeChild(promoTooltip);
             const promoPanel = document.getElementById('locked-remix-panel');
@@ -893,17 +879,94 @@ export default function LandingPage() {
               }
             }
             
+            // Ensure tooltip exists for current card, create if it doesn't
+            let tooltip = document.getElementById(`recommended-tooltip-${cardIndex}`);
+            if (!tooltip) {
+              tooltip = document.createElement('div');
+              tooltip.style.cssText = `
+                position: fixed;
+                background: #1E1E1E;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                z-index: 2147483647;
+                pointer-events: auto;
+                white-space: nowrap;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                left: ${e.clientX + 12}px;
+                top: ${e.clientY + 12}px;
+              `;
+              tooltip.id = `recommended-tooltip-${cardIndex}`;
+              tooltip.innerHTML = `
+                <span id="recommended-tooltip-content-text-${cardIndex}" style="cursor:pointer;padding:2px 4px;border-radius:4px">Content</span>
+                <span> | </span>
+                <span id="recommended-tooltip-performance-text-${cardIndex}" style="cursor:pointer;padding:2px 4px;border-radius:4px">Performance</span>
+                <span> |</span>
+                <button id="recommended-tooltip-close-${cardIndex}" aria-label="Close" style="background:transparent;border:none;color:white;opacity:.85;cursor:pointer;padding:0 2px;line-height:1">✕</button>
+              `;
+              document.body.appendChild(tooltip);
+              
+              // Set up close button handler
+              const closeBtn = document.getElementById(`recommended-tooltip-close-${cardIndex}`);
+              if (closeBtn) {
+                closeBtn.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  const t = document.getElementById(`recommended-tooltip-${cardIndex}`);
+                  if (t) t.remove();
+                  const panel = document.getElementById(`recommended-locked-remix-panel-${cardIndex}`);
+                  if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+                  const performancePanel = document.getElementById(`recommended-performance-empty-panel-${cardIndex}`);
+                  if (performancePanel && performancePanel.parentNode) performancePanel.parentNode.removeChild(performancePanel);
+                  window.__recommendedTooltipLocked = false;
+                });
+              }
+              
+              // Note: Content and Performance handlers are set up in onMouseEnter
+              // If tooltip is created here, those handlers will be set up when mouse enters
+            } else {
+              // Update position if tooltip already exists
+              tooltip.style.left = `${e.clientX + 12}px`;
+              tooltip.style.top = `${e.clientY + 12}px`;
+            }
+            
+            // Apply selected state to Content text
+            const contentText = tooltip.querySelector(`#recommended-tooltip-content-text-${cardIndex}`);
+            if (contentText) {
+              contentText.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+              contentText.style.color = '#FFFFFF';
+              contentText.style.padding = '2px 4px';
+              contentText.style.borderRadius = '4px';
+            }
+            
+            window.__recommendedTooltipLocked = true;
+            
             // Show remix panel immediately on click (same as content cards)
             try {
               const existingPanel = document.getElementById(`recommended-locked-remix-panel-${cardIndex}`);
               if (existingPanel && existingPanel.parentNode) {
                 existingPanel.parentNode.removeChild(existingPanel);
               }
-              const t = document.getElementById(`recommended-tooltip-${cardIndex}`);
-              if (!t) return;
-              // Use requestAnimationFrame to ensure tooltip is fully positioned before calculating
+              
+              // Use the tooltip we already have (created or retrieved above)
+              if (!tooltip) {
+                console.error('Tooltip not found for card', cardIndex);
+                return;
+              }
+              
+              // Ensure tooltip is in the DOM and has been rendered
+              // Use double requestAnimationFrame to ensure DOM is fully updated
               requestAnimationFrame(() => {
-                const rect = t.getBoundingClientRect();
+                requestAnimationFrame(() => {
+                  // Re-query tooltip to ensure it's still in DOM
+                  const t = document.getElementById(`recommended-tooltip-${cardIndex}`);
+                  if (!t) {
+                    console.error('Tooltip not found in requestAnimationFrame for card', cardIndex);
+                    return;
+                  }
+                  const rect = t.getBoundingClientRect();
                 const contentDataLocal = getRecommendedCardContent(cardIndex);
                 
                 const remixContainer = document.createElement('div');
@@ -1127,6 +1190,7 @@ export default function LandingPage() {
                 setTimeout(() => {
                   document.addEventListener('mousedown', handleClickOutside);
                 }, 100);
+                });
               });
             } catch {}
           }, 0);
