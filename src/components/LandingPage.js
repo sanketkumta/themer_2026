@@ -386,6 +386,52 @@ export default function LandingPage() {
     );
   }, [mockThemeColor]);
   
+  // Listen for save events from promo card clicks (when promo card closes recommendation bubbles)
+  useEffect(() => {
+    const handleSaveRecommendedContent = (e) => {
+      const { cardIndex, title, description } = e.detail || {};
+      if (cardIndex !== undefined) {
+        // Save the title
+        if (title !== undefined) {
+          setRecommendedCardTitle(cardIndex, title);
+        }
+        // Save the description and update content cards
+        if (description !== undefined) {
+          setRecommendedContentCards(prev => {
+            const updated = [...prev];
+            updated[cardIndex] = { ...updated[cardIndex], title: title || updated[cardIndex].title, imageDescription: description };
+            return updated;
+          });
+        }
+      }
+    };
+    
+    const handleRemixRecommendedImage = (e) => {
+      const { cardIndex, description } = e.detail || {};
+      if (cardIndex !== undefined && description) {
+        try {
+          const newImageUrl = getPollinationsImage(description, mockThemeColor, { randomize: true });
+          const timestamp = Date.now();
+          const separator = newImageUrl.includes('?') ? '&' : '?';
+          const newUrl = `${newImageUrl}${separator}t=${timestamp}`;
+          setRecommendedCardRemixedImage(cardIndex, newUrl);
+          setRecommendedCardImageLoadingState(cardIndex, true);
+          console.log('Recommended card remix generated from promo card save', { cardIndex, description, newUrl });
+        } catch (err) {
+          console.error('Recommended card remix failed', err);
+        }
+      }
+    };
+    
+    window.addEventListener('save-recommended-card-content', handleSaveRecommendedContent);
+    window.addEventListener('remix-recommended-card-image', handleRemixRecommendedImage);
+    
+    return () => {
+      window.removeEventListener('save-recommended-card-content', handleSaveRecommendedContent);
+      window.removeEventListener('remix-recommended-card-image', handleRemixRecommendedImage);
+    };
+  }, [mockThemeColor]);
+  
   // Initialize default images for recommended content cards on mount
   useEffect(() => {
     recommendedContentCards.forEach((card, index) => {
