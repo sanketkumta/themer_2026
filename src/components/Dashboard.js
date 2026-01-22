@@ -159,6 +159,45 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
     return contentCardImageState.imageLoadingStates[cardIndex] || false;
   };
 
+  // Listen for save events from promo card clicks (when promo card closes content card bubbles)
+  useEffect(() => {
+    const handleSaveContentCard = (e) => {
+      const { cardIndex, title, description } = e.detail || {};
+      if (cardIndex !== null && cardIndex !== undefined) {
+        // Save the title
+        if (title !== undefined) {
+          setContentCardTitle(cardIndex, title);
+        }
+        console.log('FrameContent: Content card content saved', { cardIndex, title, description });
+      }
+    };
+    
+    const handleRemixContentCardImage = (e) => {
+      const { cardIndex, description } = e.detail || {};
+      if (cardIndex !== null && cardIndex !== undefined && description) {
+        try {
+          const newImageUrl = getPollinationsImage(description, themeColor, { randomize: true });
+          const timestamp = Date.now();
+          const separator = newImageUrl.includes('?') ? '&' : '?';
+          const newUrl = `${newImageUrl}${separator}t=${timestamp}`;
+          setContentCardRemixedImage(cardIndex, newUrl);
+          setContentCardImageLoading(cardIndex, true);
+          console.log('FrameContent: Content card remix generated from promo card save', { cardIndex, description, newUrl });
+        } catch (err) {
+          console.error('FrameContent: Content card remix failed', err);
+        }
+      }
+    };
+    
+    window.addEventListener('save-dashboard-content-card', handleSaveContentCard);
+    window.addEventListener('remix-dashboard-content-card-image', handleRemixContentCardImage);
+    
+    return () => {
+      window.removeEventListener('save-dashboard-content-card', handleSaveContentCard);
+      window.removeEventListener('remix-dashboard-content-card-image', handleRemixContentCardImage);
+    };
+  }, [themeColor]);
+
   // Cleanup function to remove any lingering DOM elements
   useEffect(() => {
     return () => {
@@ -418,6 +457,7 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
                   const remixContainer = document.createElement('div');
                   remixContainer.id = 'locked-remix-panel';
                   remixContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
+                  remixContainer.setAttribute('data-content-card-index', originalCardIndex.toString());
                   
                   // Calculate proper spacing: bubble bottom should be 8px above tooltip top
                   // Bubble height is approximately 150px (text + buttons + padding)
@@ -685,6 +725,7 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
               const remixContainer = document.createElement('div');
               remixContainer.id = 'locked-remix-panel';
               remixContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
+              remixContainer.setAttribute('data-content-card-index', originalCardIndex.toString());
               
               // Calculate proper spacing: bubble bottom should be 8px above tooltip top
               // Bubble height is approximately 150px (text + buttons + padding)
@@ -1878,6 +1919,7 @@ export default function Dashboard() {
       setFlightsGenerated(false);
     }
   }, [isGeneratingFlights]);
+
 
   // Handle theme animation completion
   const handleThemeAnimationComplete = () => {

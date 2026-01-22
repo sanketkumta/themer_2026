@@ -787,12 +787,48 @@ export default function Component3Cards({
             }
             window.__recommendedTooltipLocked = false;
             
+            // Check if there's a Dashboard content card bubble open and save its content before closing
+            const existingContentCardPanel = document.getElementById('locked-remix-panel');
+            if (existingContentCardPanel && existingContentCardPanel.parentNode) {
+              // Check if this is a Dashboard content card bubble (has locked-tooltip-title/desc, not recommended-locked-tooltip-title)
+              const titleEl = existingContentCardPanel.querySelector('#locked-tooltip-title');
+              const descEl = existingContentCardPanel.querySelector('#locked-tooltip-desc');
+              
+              // Only save if it's a Dashboard content card (has these elements and doesn't have recommended prefix)
+              if (titleEl || descEl) {
+                const isRecommendedCard = existingContentCardPanel.querySelector('[id^="recommended-locked-tooltip-title"]');
+                if (!isRecommendedCard) {
+                  // This is a Dashboard content card bubble - save its content
+                  try {
+                    const titleValue = titleEl?.innerText || '';
+                    const descValue = descEl?.innerText || '';
+                    const cardIndex = existingContentCardPanel.getAttribute('data-content-card-index');
+                    
+                    // Dispatch event with card index if available
+                    const saveEvent = new CustomEvent('save-dashboard-content-card', {
+                      detail: { cardIndex: cardIndex ? parseInt(cardIndex, 10) : null, title: titleValue, description: descValue }
+                    });
+                    window.dispatchEvent(saveEvent);
+                    
+                    // Also trigger remix if description changed
+                    if (descValue) {
+                      const remixEvent = new CustomEvent('remix-dashboard-content-card-image', {
+                        detail: { cardIndex: cardIndex ? parseInt(cardIndex, 10) : null, description: descValue }
+                      });
+                      window.dispatchEvent(remixEvent);
+                    }
+                  } catch (err) {
+                    console.error('Error saving Dashboard content card content:', err);
+                  }
+                }
+              }
+              
+              // Now close the existing panel
+              existingContentCardPanel.parentNode.removeChild(existingContentCardPanel);
+            }
+            
             // Create or update remix panel below the tooltip, left-aligned
             try {
-              const existingPanel = document.getElementById('locked-remix-panel');
-              if (existingPanel && existingPanel.parentNode) {
-                existingPanel.parentNode.removeChild(existingPanel);
-              }
             const t = document.getElementById('custom-tooltip');
             if (!t) return;
             const rect = t.getBoundingClientRect();
