@@ -410,13 +410,33 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
               // Open remix rectangle (reuse existing logic from card click)
               const tooltip = document.getElementById('custom-tooltip');
               if (tooltip) {
-                const rect = tooltip.getBoundingClientRect();
-                const contentDataLocal = getContentData(originalCardIndex, selectedProfile);
-                // Create the exact same UI as the built-in remix panel (directly positioned)
-                const remixContainer = document.createElement('div');
-                remixContainer.id = 'locked-remix-panel';
-                remixContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
-                remixContainer.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + (rect.top - 202) + 'px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px';
+                // Use requestAnimationFrame to ensure tooltip is fully positioned
+                requestAnimationFrame(() => {
+                  const rect = tooltip.getBoundingClientRect();
+                  const contentDataLocal = getContentData(originalCardIndex, selectedProfile);
+                  // Create the exact same UI as the built-in remix panel (directly positioned)
+                  const remixContainer = document.createElement('div');
+                  remixContainer.id = 'locked-remix-panel';
+                  remixContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
+                  
+                  // Calculate proper spacing: bubble bottom should be 8px above tooltip top
+                  // Bubble height is approximately 150px (text + buttons + padding)
+                  const bubbleHeight = 150;
+                  const spacing = 8;
+                  const tooltipHeight = rect.height || 30; // Tooltip height (default 30px if not measured)
+                  
+                  // Position bubble: bottom of bubble = top of tooltip - spacing
+                  // So: top of bubble = (top of tooltip - spacing) - bubble height
+                  let bubbleTop = rect.top - spacing - bubbleHeight;
+                  
+                  // Viewport boundary check: ensure bubble doesn't go off-screen
+                  const minTop = 10; // Minimum distance from top of viewport
+                  if (bubbleTop < minTop) {
+                    // If bubble would go off top, position it just above tooltip with minimum spacing
+                    bubbleTop = Math.max(minTop, rect.top - tooltipHeight - spacing - bubbleHeight);
+                  }
+                  
+                  remixContainer.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + bubbleTop + 'px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px';
 
                 // Create the text paragraph with contenteditable spans (exact same as built-in)
                 const textDiv = document.createElement('div');
@@ -498,6 +518,33 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
 
                 document.body.appendChild(remixContainer);
 
+                // Function to reposition bubble based on actual height
+                const repositionBubble = () => {
+                  requestAnimationFrame(() => {
+                    const tooltip = document.getElementById('custom-tooltip');
+                    const bubble = document.getElementById('locked-remix-panel');
+                    if (!tooltip || !bubble) return;
+                    
+                    const tooltipRect = tooltip.getBoundingClientRect();
+                    const bubbleRect = bubble.getBoundingClientRect();
+                    const actualBubbleHeight = bubbleRect.height;
+                    const spacing = 8;
+                    const tooltipHeight = tooltipRect.height || 30;
+                    
+                    // Calculate new position: bubble bottom should be 8px above tooltip top
+                    let bubbleTop = tooltipRect.top - spacing - actualBubbleHeight;
+                    
+                    // Viewport boundary check
+                    const minTop = 10;
+                    if (bubbleTop < minTop) {
+                      bubbleTop = Math.max(minTop, tooltipRect.top - tooltipHeight - spacing - actualBubbleHeight);
+                    }
+                    
+                    // Update bubble position
+                    bubble.style.top = `${bubbleTop}px`;
+                  });
+                };
+
                 // Add event listeners for title editing
                 titleSpan.addEventListener('input', (e) => {
                   const el = e.target;
@@ -506,8 +553,23 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
                   if (clamped !== raw) el.innerText = clamped;
                   // Update the content card title
                   setContentCardTitle(originalCardIndex, clamped);
+                  // Reposition bubble after text change
+                  repositionBubble();
                 });
                 titleSpan.addEventListener('keydown', (e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); return; }
+                });
+                
+                // Add event listener for description editing
+                descSpan.addEventListener('input', (e) => {
+                  const el = e.target;
+                  const raw = el.innerText || '';
+                  const clamped = raw.length > 100 ? raw.slice(0, 100) : raw;
+                  if (clamped !== raw) el.innerText = clamped;
+                  // Reposition bubble after text change
+                  repositionBubble();
+                });
+                descSpan.addEventListener('keydown', (e) => {
                   if (e.key === 'Enter') { e.preventDefault(); return; }
                 });
 
@@ -528,6 +590,10 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
                 };
                 if (lockedRemixBtn) lockedRemixBtn.addEventListener('click', (ev) => { ev.stopPropagation(); triggerRemix(); });
                 if (lockedSaveBtn) lockedSaveBtn.addEventListener('click', (ev) => { ev.stopPropagation(); triggerRemix(); });
+                
+                // Initial reposition after bubble is created to ensure correct positioning
+                repositionBubble();
+                });
               }
             });
           }
@@ -611,13 +677,33 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
               }
             const t = document.getElementById('custom-tooltip');
             if (!t) return;
-            const rect = t.getBoundingClientRect();
-            const contentDataLocal = getContentData(originalCardIndex, selectedProfile);
-            // Create the exact same UI as the built-in remix panel (directly positioned)
-            const remixContainer = document.createElement('div');
-            remixContainer.id = 'locked-remix-panel';
-            remixContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
-            remixContainer.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + (rect.top - 202) + 'px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px';
+            // Use requestAnimationFrame to ensure tooltip is fully positioned before calculating
+            requestAnimationFrame(() => {
+              const rect = t.getBoundingClientRect();
+              const contentDataLocal = getContentData(originalCardIndex, selectedProfile);
+              // Create the exact same UI as the built-in remix panel (directly positioned)
+              const remixContainer = document.createElement('div');
+              remixContainer.id = 'locked-remix-panel';
+              remixContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
+              
+              // Calculate proper spacing: bubble bottom should be 8px above tooltip top
+              // Bubble height is approximately 150px (text + buttons + padding)
+              const bubbleHeight = 150;
+              const spacing = 8;
+              const tooltipHeight = rect.height || 30; // Tooltip height (default 30px if not measured)
+              
+              // Position bubble: bottom of bubble = top of tooltip - spacing
+              // So: top of bubble = (top of tooltip - spacing) - bubble height
+              let bubbleTop = rect.top - spacing - bubbleHeight;
+              
+              // Viewport boundary check: ensure bubble doesn't go off-screen
+              const minTop = 10; // Minimum distance from top of viewport
+              if (bubbleTop < minTop) {
+                // If bubble would go off top, position it just above tooltip with minimum spacing
+                bubbleTop = Math.max(minTop, rect.top - tooltipHeight - spacing - bubbleHeight);
+              }
+              
+              remixContainer.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + bubbleTop + 'px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px';
 
             // Create the text paragraph with contenteditable spans (exact same as built-in)
             const textDiv = document.createElement('div');
@@ -693,6 +779,33 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
             
             document.body.appendChild(remixContainer);
 
+            // Function to reposition bubble based on actual height
+            const repositionBubble = () => {
+              requestAnimationFrame(() => {
+                const tooltip = document.getElementById('custom-tooltip');
+                const bubble = document.getElementById('locked-remix-panel');
+                if (!tooltip || !bubble) return;
+                
+                const tooltipRect = tooltip.getBoundingClientRect();
+                const bubbleRect = bubble.getBoundingClientRect();
+                const actualBubbleHeight = bubbleRect.height;
+                const spacing = 8;
+                const tooltipHeight = tooltipRect.height || 30;
+                
+                // Calculate new position: bubble bottom should be 8px above tooltip top
+                let bubbleTop = tooltipRect.top - spacing - actualBubbleHeight;
+                
+                // Viewport boundary check
+                const minTop = 10;
+                if (bubbleTop < minTop) {
+                  bubbleTop = Math.max(minTop, tooltipRect.top - tooltipHeight - spacing - actualBubbleHeight);
+                }
+                
+                // Update bubble position
+                bubble.style.top = `${bubbleTop}px`;
+              });
+            };
+
             const titleEl = remixContainer.querySelector('#locked-tooltip-title');
             const descEl = remixContainer.querySelector('#locked-tooltip-desc');
             const remixBtn = remixContainer.querySelector('#locked-tooltip-remix');
@@ -707,6 +820,8 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
                 if (clamped !== raw) el.innerText = clamped;
                 // Update the content card title
                 setContentCardTitle(originalCardIndex, clamped);
+                // Reposition bubble after text change
+                repositionBubble();
               });
               titleEl.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') { e.preventDefault(); return; }
@@ -719,6 +834,8 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
                 const clamped = raw.length > 100 ? raw.slice(0, 100) : raw;
                 if (clamped !== raw) el.innerText = clamped;
                 // Content cards don't have editable state management yet
+                // Reposition bubble after text change
+                repositionBubble();
               });
               descEl.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') { e.preventDefault(); return; }
@@ -741,13 +858,18 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
             };
             if (remixBtn) remixBtn.addEventListener('click', (ev) => { ev.stopPropagation(); triggerRemix(); });
             if (saveBtn) saveBtn.addEventListener('click', (ev) => { ev.stopPropagation(); triggerRemix(); });
+            
+            // Initial reposition after bubble is created to ensure correct positioning
+            repositionBubble();
+            });
           } catch {}
           // Stays until explicit close button is clicked
           }, 0); // Close setTimeout
         }}
       >
         {/* Image area - show image if available OR if we have a remixed image */}
-        {(contentData.image || getContentCardRemixedImage(originalCardIndex)) && (
+        {/* Only show images after theme has been saved (Save button clicked) */}
+        {(contentData.image || getContentCardRemixedImage(originalCardIndex)) && getRouteColorPromptSaved() && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-full h-full relative">
               {/* Loading spinner */}
@@ -765,16 +887,23 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
                 // Use remixed image if available, otherwise use original logic
                 const hasRemixedImage = !!getContentCardRemixedImage(originalCardIndex);
                 const baseDescription = contentData.image || contentData.text || 'content';
+                // Only generate image if theme has been saved
                 const imageSrc = getContentCardRemixedImage(originalCardIndex) || 
-                  getPollinationsImage(baseDescription, themeColor);
+                  (getRouteColorPromptSaved() ? getPollinationsImage(baseDescription, themeColor) : null);
                 
                 console.log('=== CONTENT CARD IMAGE RENDERING DEBUG ===', {
                   originalCardIndex,
                   hasRemixedImage,
                   imageSrc,
                   contentDataImage: contentData.image,
-                  isLoading: isContentCardImageLoading(originalCardIndex)
+                  isLoading: isContentCardImageLoading(originalCardIndex),
+                  themeSaved: getRouteColorPromptSaved()
                 });
+                
+                // Don't render image if imageSrc is null (theme not saved)
+                if (!imageSrc) {
+                  return null;
+                }
                 
                 return (
                   <img 

@@ -470,6 +470,7 @@ export default function LandingPage() {
     return (
       <div
         key={`recommended-card-${cardIndex}`}
+        data-card-index={cardIndex}
         className="overflow-clip relative shrink-0 flex items-center justify-center backdrop-blur-[10px] backdrop-filter group hover:shadow-[0_0_0_3px_#1E1E1E] cursor-pointer"
         style={cardStyle}
         onMouseEnter={(e) => {
@@ -546,10 +547,24 @@ export default function LandingPage() {
                   const remixContainer = document.createElement('div');
                   remixContainer.id = `recommended-locked-remix-panel-${cardIndex}`;
                   remixContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
-                  // Position bubble 8px above tooltip: bubble bottom = rect.top - 8, bubble top = bubble bottom - height
-                  // Bubble height is approximately 150px, so: rect.top - 8 - 150 = rect.top - 158
-                  // Use same calculation for consistency across all cards
-                  const bubbleTop = rect.top - 158;
+                  
+                  // Calculate proper spacing: bubble bottom should be 8px above tooltip bottom
+                  // Bubble height is approximately 150px (text + buttons + padding)
+                  const bubbleHeight = 150;
+                  const spacing = 8;
+                  const tooltipHeight = rect.height || 30; // Tooltip height (default 30px if not measured)
+                  
+                  // Position bubble: bottom of bubble = top of tooltip - spacing
+                  // So: top of bubble = (top of tooltip - spacing) - bubble height
+                  let bubbleTop = rect.top - spacing - bubbleHeight;
+                  
+                  // Viewport boundary check: ensure bubble doesn't go off-screen
+                  const minTop = 10; // Minimum distance from top of viewport
+                  if (bubbleTop < minTop) {
+                    // If bubble would go off top, position it just above tooltip with minimum spacing
+                    bubbleTop = Math.max(minTop, rect.top - tooltipHeight - spacing - bubbleHeight);
+                  }
+                  
                   remixContainer.style.cssText = `position:fixed;left:${rect.left}px;top:${bubbleTop}px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px`;
                 
                 const textDiv = document.createElement('div');
@@ -616,6 +631,33 @@ export default function LandingPage() {
                 
                 document.body.appendChild(remixContainer);
                 
+                // Function to reposition bubble based on actual height
+                const repositionBubble = () => {
+                  requestAnimationFrame(() => {
+                    const tooltip = document.getElementById(`recommended-tooltip-${cardIndex}`);
+                    const bubble = document.getElementById(`recommended-locked-remix-panel-${cardIndex}`);
+                    if (!tooltip || !bubble) return;
+                    
+                    const tooltipRect = tooltip.getBoundingClientRect();
+                    const bubbleRect = bubble.getBoundingClientRect();
+                    const actualBubbleHeight = bubbleRect.height;
+                    const spacing = 8;
+                    const tooltipHeight = tooltipRect.height || 30;
+                    
+                    // Calculate new position: bubble bottom should be 8px above tooltip top
+                    let bubbleTop = tooltipRect.top - spacing - actualBubbleHeight;
+                    
+                    // Viewport boundary check
+                    const minTop = 10;
+                    if (bubbleTop < minTop) {
+                      bubbleTop = Math.max(minTop, tooltipRect.top - tooltipHeight - spacing - actualBubbleHeight);
+                    }
+                    
+                    // Update bubble position
+                    bubble.style.top = `${bubbleTop}px`;
+                  });
+                };
+                
                 const titleEl = remixContainer.querySelector(`#recommended-locked-tooltip-title-${cardIndex}`);
                 const descEl = remixContainer.querySelector(`#recommended-locked-tooltip-desc-${cardIndex}`);
                 const remixBtn = remixContainer.querySelector(`#recommended-locked-tooltip-remix-${cardIndex}`);
@@ -628,6 +670,8 @@ export default function LandingPage() {
                     const clamped = raw.length > 50 ? raw.slice(0, 50) : raw;
                     if (clamped !== raw) el.innerText = clamped;
                     setRecommendedCardTitle(cardIndex, clamped);
+                    // Reposition bubble after text change
+                    repositionBubble();
                   });
                   titleEl.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') { e.preventDefault(); return; }
@@ -639,6 +683,8 @@ export default function LandingPage() {
                     const raw = el.innerText || '';
                     const clamped = raw.length > 100 ? raw.slice(0, 100) : raw;
                     if (clamped !== raw) el.innerText = clamped;
+                    // Reposition bubble after text change
+                    repositionBubble();
                   });
                   descEl.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') { e.preventDefault(); return; }
@@ -673,6 +719,52 @@ export default function LandingPage() {
                   });
                   triggerRemix();
                 });
+                
+                // Initial reposition after bubble is created to ensure correct positioning
+                repositionBubble();
+                
+                // Add document click listener to save and close when clicking outside
+                const handleClickOutside = (e) => {
+                  const tooltip = document.getElementById(`recommended-tooltip-${cardIndex}`);
+                  const bubble = document.getElementById(`recommended-locked-remix-panel-${cardIndex}`);
+                  
+                  // Check if click is outside both tooltip and bubble
+                  const isClickOnTooltip = tooltip && (tooltip.contains(e.target) || tooltip === e.target);
+                  const isClickOnBubble = bubble && (bubble.contains(e.target) || bubble === e.target);
+                  const isClickOnCard = e.target.closest(`[data-card-index="${cardIndex}"]`);
+                  
+                  if (!isClickOnTooltip && !isClickOnBubble && !isClickOnCard) {
+                    // Click is outside - save content and close
+                    const titleValue = titleEl?.innerText || getRecommendedCardTitle(cardIndex);
+                    const descValue = descEl?.innerText || contentDataLocal.imageDescription;
+                    
+                    // Save the content
+                    setRecommendedCardTitle(cardIndex, titleValue);
+                    setRecommendedContentCards(prev => {
+                      const updated = [...prev];
+                      updated[cardIndex] = { ...updated[cardIndex], title: titleValue, imageDescription: descValue };
+                      return updated;
+                    });
+                    
+                    // Trigger remix if description changed
+                    if (descValue && descValue !== contentDataLocal.imageDescription) {
+                      triggerRemix();
+                    }
+                    
+                    // Close tooltip and bubble
+                    if (tooltip && tooltip.parentNode) tooltip.parentNode.removeChild(tooltip);
+                    if (bubble && bubble.parentNode) bubble.parentNode.removeChild(bubble);
+                    window.__recommendedTooltipLocked = false;
+                    
+                    // Remove this listener
+                    document.removeEventListener('mousedown', handleClickOutside);
+                  }
+                };
+                
+                // Add the listener with a small delay to avoid immediate trigger
+                setTimeout(() => {
+                  document.addEventListener('mousedown', handleClickOutside);
+                }, 100);
                 });
               }
             });
@@ -698,9 +790,23 @@ export default function LandingPage() {
                 const emptyContainer = document.createElement('div');
                 emptyContainer.id = `recommended-performance-empty-panel-${cardIndex}`;
                 emptyContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
-                // Position bubble 8px above tooltip: bubble bottom = rect.top - 8, bubble top = bubble bottom - height
-                // Bubble height is approximately 150px, so: rect.top - 8 - 150 = rect.top - 158
-                emptyContainer.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top - 158}px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px`;
+                
+                // Calculate proper spacing: bubble bottom should be 8px above tooltip bottom
+                // Performance panel height is approximately 80px (smaller than content panel)
+                const bubbleHeight = 80;
+                const spacing = 8;
+                const tooltipHeight = rect.height || 30;
+                
+                // Position bubble: bottom of bubble = top of tooltip - spacing
+                let bubbleTop = rect.top - spacing - bubbleHeight;
+                
+                // Viewport boundary check: ensure bubble doesn't go off-screen
+                const minTop = 10;
+                if (bubbleTop < minTop) {
+                  bubbleTop = Math.max(minTop, rect.top - tooltipHeight - spacing - bubbleHeight);
+                }
+                
+                emptyContainer.style.cssText = `position:fixed;left:${rect.left}px;top:${bubbleTop}px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px`;
                 
                 const emptyDiv = document.createElement('div');
                 emptyDiv.className = 'w-full text-center';
@@ -760,10 +866,24 @@ export default function LandingPage() {
                 const remixContainer = document.createElement('div');
                 remixContainer.id = `recommended-locked-remix-panel-${cardIndex}`;
                 remixContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
-                // Position bubble 8px above tooltip: bubble bottom = rect.top - 8, bubble top = bubble bottom - height
-                // Bubble height is approximately 150px, so: rect.top - 8 - 150 = rect.top - 158
-                // Ensure consistent spacing for all cards - use same calculation as first card
-                const bubbleTop = rect.top - 158;
+                
+                // Calculate proper spacing: bubble bottom should be 8px above tooltip bottom
+                // Bubble height is approximately 150px (text + buttons + padding)
+                const bubbleHeight = 150;
+                const spacing = 8;
+                const tooltipHeight = rect.height || 30; // Tooltip height (default 30px if not measured)
+                
+                // Position bubble: bottom of bubble = top of tooltip - spacing
+                // So: top of bubble = (top of tooltip - spacing) - bubble height
+                let bubbleTop = rect.top - spacing - bubbleHeight;
+                
+                // Viewport boundary check: ensure bubble doesn't go off-screen
+                const minTop = 10; // Minimum distance from top of viewport
+                if (bubbleTop < minTop) {
+                  // If bubble would go off top, position it just above tooltip with minimum spacing
+                  bubbleTop = Math.max(minTop, rect.top - tooltipHeight - spacing - bubbleHeight);
+                }
+                
                 remixContainer.style.cssText = `position:fixed;left:${rect.left}px;top:${bubbleTop}px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px`;
               
               const textDiv = document.createElement('div');
@@ -830,6 +950,33 @@ export default function LandingPage() {
               
               document.body.appendChild(remixContainer);
               
+              // Function to reposition bubble based on actual height
+              const repositionBubble = () => {
+                requestAnimationFrame(() => {
+                  const tooltip = document.getElementById(`recommended-tooltip-${cardIndex}`);
+                  const bubble = document.getElementById(`recommended-locked-remix-panel-${cardIndex}`);
+                  if (!tooltip || !bubble) return;
+                  
+                  const tooltipRect = tooltip.getBoundingClientRect();
+                  const bubbleRect = bubble.getBoundingClientRect();
+                  const actualBubbleHeight = bubbleRect.height;
+                  const spacing = 8;
+                  const tooltipHeight = tooltipRect.height || 30;
+                  
+                  // Calculate new position: bubble bottom should be 8px above tooltip top
+                  let bubbleTop = tooltipRect.top - spacing - actualBubbleHeight;
+                  
+                  // Viewport boundary check
+                  const minTop = 10;
+                  if (bubbleTop < minTop) {
+                    bubbleTop = Math.max(minTop, tooltipRect.top - tooltipHeight - spacing - actualBubbleHeight);
+                  }
+                  
+                  // Update bubble position
+                  bubble.style.top = `${bubbleTop}px`;
+                });
+              };
+              
               const titleEl = remixContainer.querySelector(`#recommended-locked-tooltip-title-${cardIndex}`);
               const descEl = remixContainer.querySelector(`#recommended-locked-tooltip-desc-${cardIndex}`);
               const remixBtn = remixContainer.querySelector(`#recommended-locked-tooltip-remix-${cardIndex}`);
@@ -842,6 +989,8 @@ export default function LandingPage() {
                   const clamped = raw.length > 50 ? raw.slice(0, 50) : raw;
                   if (clamped !== raw) el.innerText = clamped;
                   setRecommendedCardTitle(cardIndex, clamped);
+                  // Reposition bubble after text change
+                  repositionBubble();
                 });
                 titleEl.addEventListener('keydown', (e) => {
                   if (e.key === 'Enter') { e.preventDefault(); return; }
@@ -853,6 +1002,8 @@ export default function LandingPage() {
                   const raw = el.innerText || '';
                   const clamped = raw.length > 100 ? raw.slice(0, 100) : raw;
                   if (clamped !== raw) el.innerText = clamped;
+                  // Reposition bubble after text change
+                  repositionBubble();
                 });
                 descEl.addEventListener('keydown', (e) => {
                   if (e.key === 'Enter') { e.preventDefault(); return; }
@@ -874,19 +1025,65 @@ export default function LandingPage() {
                 }
               };
               
-              if (remixBtn) remixBtn.addEventListener('click', (ev) => { ev.stopPropagation(); triggerRemix(); });
-              if (saveBtn) saveBtn.addEventListener('click', (ev) => { 
-                ev.stopPropagation();
-                const titleValue = titleEl?.innerText || getRecommendedCardTitle(cardIndex);
-                const descValue = descEl?.innerText || contentDataLocal.imageDescription;
-                setRecommendedCardTitle(cardIndex, titleValue);
-                setRecommendedContentCards(prev => {
-                  const updated = [...prev];
-                  updated[cardIndex] = { ...updated[cardIndex], title: titleValue, imageDescription: descValue };
-                  return updated;
+                if (remixBtn) remixBtn.addEventListener('click', (ev) => { ev.stopPropagation(); triggerRemix(); });
+                if (saveBtn) saveBtn.addEventListener('click', (ev) => { 
+                  ev.stopPropagation();
+                  const titleValue = titleEl?.innerText || getRecommendedCardTitle(cardIndex);
+                  const descValue = descEl?.innerText || contentDataLocal.imageDescription;
+                  setRecommendedCardTitle(cardIndex, titleValue);
+                  setRecommendedContentCards(prev => {
+                    const updated = [...prev];
+                    updated[cardIndex] = { ...updated[cardIndex], title: titleValue, imageDescription: descValue };
+                    return updated;
+                  });
+                  triggerRemix();
                 });
-                triggerRemix();
-              });
+                
+                // Initial reposition after bubble is created to ensure correct positioning
+                repositionBubble();
+                
+                // Add document click listener to save and close when clicking outside
+                const handleClickOutside = (e) => {
+                  const tooltip = document.getElementById(`recommended-tooltip-${cardIndex}`);
+                  const bubble = document.getElementById(`recommended-locked-remix-panel-${cardIndex}`);
+                  
+                  // Check if click is outside both tooltip and bubble
+                  const isClickOnTooltip = tooltip && (tooltip.contains(e.target) || tooltip === e.target);
+                  const isClickOnBubble = bubble && (bubble.contains(e.target) || bubble === e.target);
+                  const isClickOnCard = e.target.closest(`[data-card-index="${cardIndex}"]`);
+                  
+                  if (!isClickOnTooltip && !isClickOnBubble && !isClickOnCard) {
+                    // Click is outside - save content and close
+                    const titleValue = titleEl?.innerText || getRecommendedCardTitle(cardIndex);
+                    const descValue = descEl?.innerText || contentDataLocal.imageDescription;
+                    
+                    // Save the content
+                    setRecommendedCardTitle(cardIndex, titleValue);
+                    setRecommendedContentCards(prev => {
+                      const updated = [...prev];
+                      updated[cardIndex] = { ...updated[cardIndex], title: titleValue, imageDescription: descValue };
+                      return updated;
+                    });
+                    
+                    // Trigger remix if description changed
+                    if (descValue && descValue !== contentDataLocal.imageDescription) {
+                      triggerRemix();
+                    }
+                    
+                    // Close tooltip and bubble
+                    if (tooltip && tooltip.parentNode) tooltip.parentNode.removeChild(tooltip);
+                    if (bubble && bubble.parentNode) bubble.parentNode.removeChild(bubble);
+                    window.__recommendedTooltipLocked = false;
+                    
+                    // Remove this listener
+                    document.removeEventListener('mousedown', handleClickOutside);
+                  }
+                };
+                
+                // Add the listener with a small delay to avoid immediate trigger
+                setTimeout(() => {
+                  document.addEventListener('mousedown', handleClickOutside);
+                }, 100);
               });
             } catch {}
           }, 0);
