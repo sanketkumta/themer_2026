@@ -743,6 +743,18 @@ export default function Component3Cards({
             }
             window.__tooltipLocked = true;
             try { setTooltipLocked(true); } catch {}
+            
+            // Close any recommendation card prompt bubbles
+            for (let i = 0; i < 4; i++) {
+              const recTooltip = document.getElementById(`recommended-tooltip-${i}`);
+              if (recTooltip && recTooltip.parentNode) recTooltip.parentNode.removeChild(recTooltip);
+              const recPanel = document.getElementById(`recommended-locked-remix-panel-${i}`);
+              if (recPanel && recPanel.parentNode) recPanel.parentNode.removeChild(recPanel);
+              const recPerfPanel = document.getElementById(`recommended-performance-empty-panel-${i}`);
+              if (recPerfPanel && recPerfPanel.parentNode) recPerfPanel.parentNode.removeChild(recPerfPanel);
+            }
+            window.__recommendedTooltipLocked = false;
+            
             // Create or update remix panel below the tooltip, left-aligned
             try {
               const existingPanel = document.getElementById('locked-remix-panel');

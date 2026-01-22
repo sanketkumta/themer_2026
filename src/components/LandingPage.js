@@ -532,6 +532,28 @@ export default function LandingPage() {
                 performanceText.style.backgroundColor = 'transparent';
                 performanceText.style.color = '#FFFFFF';
               }
+              
+              // Close any promo card prompt bubbles
+              const promoTooltip = document.getElementById('custom-tooltip');
+              if (promoTooltip && promoTooltip.parentNode) promoTooltip.parentNode.removeChild(promoTooltip);
+              const promoPanel = document.getElementById('locked-remix-panel');
+              if (promoPanel && promoPanel.parentNode) promoPanel.parentNode.removeChild(promoPanel);
+              const promoPerfPanel = document.getElementById('performance-empty-panel');
+              if (promoPerfPanel && promoPerfPanel.parentNode) promoPerfPanel.parentNode.removeChild(promoPerfPanel);
+              window.__tooltipLocked = false;
+              
+              // Close any other recommendation card prompt bubbles (from other cards)
+              for (let i = 0; i < 4; i++) {
+                if (i !== cardIndex) {
+                  const otherTooltip = document.getElementById(`recommended-tooltip-${i}`);
+                  if (otherTooltip && otherTooltip.parentNode) otherTooltip.parentNode.removeChild(otherTooltip);
+                  const otherPanel = document.getElementById(`recommended-locked-remix-panel-${i}`);
+                  if (otherPanel && otherPanel.parentNode) otherPanel.parentNode.removeChild(otherPanel);
+                  const otherPerfPanel = document.getElementById(`recommended-performance-empty-panel-${i}`);
+                  if (otherPerfPanel && otherPerfPanel.parentNode) otherPerfPanel.parentNode.removeChild(otherPerfPanel);
+                }
+              }
+              
               // Check if panel already exists (created by card click), if so, just show it
               const existingPanel = document.getElementById(`recommended-locked-remix-panel-${cardIndex}`);
               if (existingPanel) {
@@ -849,6 +871,27 @@ export default function LandingPage() {
               }
             }
             window.__recommendedTooltipLocked = true;
+            
+            // Close any promo card prompt bubbles
+            const promoTooltip = document.getElementById('custom-tooltip');
+            if (promoTooltip && promoTooltip.parentNode) promoTooltip.parentNode.removeChild(promoTooltip);
+            const promoPanel = document.getElementById('locked-remix-panel');
+            if (promoPanel && promoPanel.parentNode) promoPanel.parentNode.removeChild(promoPanel);
+            const promoPerfPanel = document.getElementById('performance-empty-panel');
+            if (promoPerfPanel && promoPerfPanel.parentNode) promoPerfPanel.parentNode.removeChild(promoPerfPanel);
+            window.__tooltipLocked = false;
+            
+            // Close any other recommendation card prompt bubbles (from other cards)
+            for (let i = 0; i < 4; i++) {
+              if (i !== cardIndex) {
+                const otherTooltip = document.getElementById(`recommended-tooltip-${i}`);
+                if (otherTooltip && otherTooltip.parentNode) otherTooltip.parentNode.removeChild(otherTooltip);
+                const otherPanel = document.getElementById(`recommended-locked-remix-panel-${i}`);
+                if (otherPanel && otherPanel.parentNode) otherPanel.parentNode.removeChild(otherPanel);
+                const otherPerfPanel = document.getElementById(`recommended-performance-empty-panel-${i}`);
+                if (otherPerfPanel && otherPerfPanel.parentNode) otherPerfPanel.parentNode.removeChild(otherPerfPanel);
+              }
+            }
             
             // Show remix panel immediately on click (same as content cards)
             try {
