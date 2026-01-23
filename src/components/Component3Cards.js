@@ -791,11 +791,11 @@ export default function Component3Cards({
               }
             }
             
-            // Close any recommendation card prompt bubbles, but save content first
+            // Close any recommendation card prompt bubbles, but retain text only (no remix)
             for (let i = 0; i < 4; i++) {
               const recPanel = document.getElementById(`recommended-locked-remix-panel-${i}`);
               if (recPanel && recPanel.parentNode) {
-                // Save the typed content before closing
+                // Retain the typed content in state before closing (but don't trigger remix)
                 try {
                   const titleEl = recPanel.querySelector(`#recommended-locked-tooltip-title-${i}`);
                   const descEl = recPanel.querySelector(`#recommended-locked-tooltip-desc-${i}`);
@@ -805,23 +805,17 @@ export default function Component3Cards({
                     const titleValue = titleEl?.innerText || '';
                     const descValue = descEl?.innerText || '';
                     
-                    // Trigger a custom event to save the content
+                    // Trigger a custom event to save the content (retain text in state)
                     // The LandingPage component should listen for this and save the state
                     const saveEvent = new CustomEvent('save-recommended-card-content', {
                       detail: { cardIndex: i, title: titleValue, description: descValue }
                     });
                     window.dispatchEvent(saveEvent);
                     
-                    // Also trigger remix if description changed
-                    if (descValue) {
-                      const remixEvent = new CustomEvent('remix-recommended-card-image', {
-                        detail: { cardIndex: i, description: descValue }
-                      });
-                      window.dispatchEvent(remixEvent);
-                    }
+                    // Do NOT trigger remix - only retain text, no image generation
                   }
                 } catch (err) {
-                  console.error('Error saving recommendation card content:', err);
+                  console.error('Error retaining recommendation card content:', err);
                 }
               }
               
