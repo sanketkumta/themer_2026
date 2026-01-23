@@ -834,8 +834,64 @@ export default function Component3Cards({
               if (existingPanel && existingPanel.parentNode) {
                 existingPanel.parentNode.removeChild(existingPanel);
               }
-            const t = document.getElementById('custom-tooltip');
-            if (!t) return;
+            
+            // If tooltip doesn't exist (because onMouseEnter was blocked by recommendation bubble),
+            // create it now at the click position
+            let t = document.getElementById('custom-tooltip');
+            if (!t) {
+              // Create the tooltip at click position
+              t = document.createElement('div');
+              t.style.cssText = `
+                position: fixed;
+                background: #1E1E1E;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                z-index: 2147483647;
+                pointer-events: auto;
+                white-space: nowrap;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                left: ${e.clientX + 12}px;
+                top: ${e.clientY + 12}px;
+              `;
+              t.id = 'custom-tooltip';
+              t.innerHTML = `
+                <span id="tooltip-content-text" style="cursor:pointer;padding:2px 4px;border-radius:4px">Content</span>
+                <span> | </span>
+                <span id="tooltip-performance-text" style="cursor:pointer;padding:2px 4px;border-radius:4px">Performance</span>
+                <span> |</span>
+                <button id="custom-tooltip-close" aria-label="Close" style="background:transparent;border:none;color:white;opacity:.85;cursor:pointer;padding:0 2px;line-height:1">✕</button>
+              `;
+              document.body.appendChild(t);
+              
+              // Apply selected state to Content text
+              const contentText = t.querySelector('#tooltip-content-text');
+              if (contentText) {
+                contentText.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                contentText.style.color = '#FFFFFF';
+                contentText.style.padding = '2px 4px';
+                contentText.style.borderRadius = '4px';
+              }
+              
+              // Add close button handler
+              const closeBtn = t.querySelector('#custom-tooltip-close');
+              if (closeBtn) {
+                closeBtn.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  const tooltip = document.getElementById('custom-tooltip');
+                  if (tooltip) tooltip.remove();
+                  const panel = document.getElementById('locked-remix-panel');
+                  if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+                  const performancePanel = document.getElementById('performance-empty-panel');
+                  if (performancePanel && performancePanel.parentNode) performancePanel.parentNode.removeChild(performancePanel);
+                  window.__tooltipLocked = false;
+                  try { setTooltipLocked(false); } catch {}
+                });
+              }
+            }
             const rect = t.getBoundingClientRect();
 
             const cardContent = getDefaultCardContent(originalCardIndex);
