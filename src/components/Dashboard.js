@@ -348,6 +348,13 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
         style={cardStyle}
         onMouseEnter={(e) => {
           if (window.__tooltipLocked) return; // prevent new tooltip while locked
+          
+          // Check if any prompt bubble is open (promo card or content card)
+          const panel = document.getElementById('locked-remix-panel');
+          if (panel && panel.parentNode) {
+            return; // Don't show tooltip if any bubble is open
+          }
+          
           const tooltip = document.createElement('div');
           tooltip.style.cssText = `
             position: fixed;

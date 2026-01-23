@@ -521,10 +521,17 @@ export default function LandingPage() {
         style={cardStyle}
         onMouseEnter={(e) => {
           if (window.__recommendedTooltipLocked) return;
-          // Check if any prompt bubble is open (recommendation or promo)
-          const hasOpenRecommendationBubble = document.querySelector('[id^="recommended-locked-remix-panel-"]');
-          const hasOpenPromoBubble = document.getElementById('locked-remix-panel');
-          if (hasOpenRecommendationBubble || hasOpenPromoBubble) return;
+          
+          // Check if any prompt bubble is open (promo card or recommendation card)
+          const promoPanel = document.getElementById('locked-remix-panel');
+          if (promoPanel && promoPanel.parentNode) return; // Don't show tooltip if promo bubble is open
+          
+          // Check if any recommendation card prompt bubble is open
+          for (let i = 0; i < 4; i++) {
+            const recPanel = document.getElementById(`recommended-locked-remix-panel-${i}`);
+            if (recPanel && recPanel.parentNode) return; // Don't show tooltip if any recommendation bubble is open
+          }
+          
           const tooltip = document.createElement('div');
           tooltip.style.cssText = `
             position: fixed;
@@ -899,10 +906,6 @@ export default function LandingPage() {
         onMouseMove={(e) => {
           const tooltip = document.getElementById(`recommended-tooltip-${cardIndex}`);
           if (!tooltip || window.__recommendedTooltipLocked) return;
-          // Check if any prompt bubble is open (recommendation or promo)
-          const hasOpenRecommendationBubble = document.querySelector('[id^="recommended-locked-remix-panel-"]');
-          const hasOpenPromoBubble = document.getElementById('locked-remix-panel');
-          if (hasOpenRecommendationBubble || hasOpenPromoBubble) return;
           tooltip.style.left = `${e.clientX + 18}px`;
           tooltip.style.top = `${e.clientY + 18}px`;
         }}
@@ -1471,7 +1474,7 @@ export default function LandingPage() {
                   style={{ width: '100%' }}
                 >
                   {[0, 1, 2, 3].map((cardIndex) => renderRecommendedCard(cardIndex))}
-                </div>
+                        </div>
               </div>
             </div>
           </div>

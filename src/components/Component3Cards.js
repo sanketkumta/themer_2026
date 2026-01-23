@@ -475,10 +475,17 @@ export default function Component3Cards({
         className="h-[200px] relative shrink-0 flex items-center justify-center rounded-lg cursor-pointer hover:shadow-[0_0_0_3px_#1E1E1E] group"
         onMouseEnter={(e) => {
           if (window.__tooltipLocked) return; // prevent new tooltips while locked
-          // Check if any prompt bubble is open (promo or recommendation)
-          const hasOpenPromoBubble = document.getElementById('locked-remix-panel');
-          const hasOpenRecommendationBubble = document.querySelector('[id^="recommended-locked-remix-panel-"]');
-          if (hasOpenPromoBubble || hasOpenRecommendationBubble) return;
+          
+          // Check if any prompt bubble is open (promo card or recommendation card)
+          const promoPanel = document.getElementById('locked-remix-panel');
+          if (promoPanel && promoPanel.parentNode) return; // Don't show tooltip if promo bubble is open
+          
+          // Check if any recommendation card prompt bubble is open
+          for (let i = 0; i < 4; i++) {
+            const recPanel = document.getElementById(`recommended-locked-remix-panel-${i}`);
+            if (recPanel && recPanel.parentNode) return; // Don't show tooltip if any recommendation bubble is open
+          }
+          
           // Create a lightweight, fixed-position tooltip that follows the cursor
           const tooltip = document.createElement('div');
           tooltip.style.cssText = `
@@ -719,10 +726,6 @@ export default function Component3Cards({
           // Keep tooltip anchored to the mouse pointer
           const tooltip = document.getElementById('custom-tooltip');
           if (!tooltip || window.__tooltipLocked) return;
-          // Check if any prompt bubble is open (promo or recommendation)
-          const hasOpenPromoBubble = document.getElementById('locked-remix-panel');
-          const hasOpenRecommendationBubble = document.querySelector('[id^="recommended-locked-remix-panel-"]');
-          if (hasOpenPromoBubble || hasOpenRecommendationBubble) return;
           tooltip.style.left = `${e.clientX + 18}px`;
           tooltip.style.top = `${e.clientY + 18}px`;
         }}
