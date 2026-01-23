@@ -663,19 +663,73 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
         onClick={(e) => {
           // Defer DOM manipulation to avoid conflicts with React's render cycle
           setTimeout(() => {
-            const tooltip = document.getElementById('custom-tooltip');
-            if (tooltip) {
+            // Ensure tooltip exists for current card, create if it doesn't
+            let tooltip = document.getElementById('custom-tooltip');
+            if (!tooltip) {
+              tooltip = document.createElement('div');
+              tooltip.style.cssText = `
+                position: fixed;
+                background: #1E1E1E;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                z-index: 2147483647;
+                pointer-events: auto;
+                white-space: nowrap;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                left: ${e.clientX + 12}px;
+                top: ${e.clientY + 12}px;
+              `;
+              tooltip.id = 'custom-tooltip';
+              tooltip.innerHTML = `
+                <span id="tooltip-content-text" style="cursor:pointer;padding:2px 4px;border-radius:4px">Content</span>
+                <span> | </span>
+                <span id="tooltip-performance-text" style="cursor:pointer;padding:2px 4px;border-radius:4px">Performance</span>
+                <span> |</span>
+                <button id="custom-tooltip-close" aria-label="Close" style="background:transparent;border:none;color:white;opacity:.85;cursor:pointer;padding:0 2px;line-height:1">✕</button>
+              `;
+              document.body.appendChild(tooltip);
+              
+              // Set up close button handler
+              const closeBtn = document.getElementById('custom-tooltip-close');
+              if (closeBtn) {
+                closeBtn.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  const t = document.getElementById('custom-tooltip');
+                  if (t) t.remove();
+                  const panel = document.getElementById('locked-remix-panel');
+                  if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+                  const performancePanel = document.getElementById('performance-empty-panel');
+                  if (performancePanel && performancePanel.parentNode) performancePanel.parentNode.removeChild(performancePanel);
+                  window.__tooltipLocked = false;
+                });
+              }
+              
+              // Set up Content and Performance click handlers (same as in onMouseEnter)
+              // Note: These handlers are already set up in onMouseEnter, but we need them here too
+              // in case tooltip is created via onClick without hover
+              const contentTextEl = document.getElementById('tooltip-content-text');
+              const performanceTextEl = document.getElementById('tooltip-performance-text');
+              // The handlers will be set up by onMouseEnter if user hovers, but we don't need to duplicate them here
+              // since onClick already creates the bubble directly
+            } else {
+              // Update position if tooltip already exists
               tooltip.style.left = `${e.clientX + 12}px`;
               tooltip.style.top = `${e.clientY + 12}px`;
-              // Apply selected state to Content text (matching hovertip selected state)
-              const contentText = tooltip.querySelector('#tooltip-content-text');
-              if (contentText) {
-                contentText.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-                contentText.style.color = '#FFFFFF';
-                contentText.style.padding = '2px 4px';
-                contentText.style.borderRadius = '4px';
-              }
             }
+            
+            // Apply selected state to Content text (matching hovertip selected state)
+            const contentText = tooltip.querySelector('#tooltip-content-text');
+            if (contentText) {
+              contentText.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+              contentText.style.color = '#FFFFFF';
+              contentText.style.padding = '2px 4px';
+              contentText.style.borderRadius = '4px';
+            }
+            
             window.__tooltipLocked = true;
             // Show remix panel UI below tooltip, left-aligned (content cards)
             try {
