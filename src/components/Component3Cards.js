@@ -109,7 +109,15 @@ export default function Component3Cards({
   useEffect(() => {
     return () => {
       const existingPanel = document.getElementById('locked-remix-panel');
-      if (existingPanel && existingPanel.parentNode) existingPanel.parentNode.removeChild(existingPanel);
+      if (existingPanel) {
+        // Clean up scroll listener
+        if (existingPanel._scrollHandler) {
+          window.removeEventListener('scroll', existingPanel._scrollHandler, true);
+          window.removeEventListener('resize', existingPanel._scrollHandler);
+          delete existingPanel._scrollHandler;
+        }
+        if (existingPanel.parentNode) existingPanel.parentNode.removeChild(existingPanel);
+      }
       const performancePanel = document.getElementById('performance-empty-panel');
       if (performancePanel && performancePanel.parentNode) performancePanel.parentNode.removeChild(performancePanel);
       const tooltip = document.getElementById('custom-tooltip');
@@ -525,7 +533,15 @@ export default function Component3Cards({
               const t = document.getElementById('custom-tooltip');
               if (t) t.remove();
               const panel = document.getElementById('locked-remix-panel');
-              if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+              if (panel) {
+                // Clean up scroll listener
+                if (panel._scrollHandler) {
+                  window.removeEventListener('scroll', panel._scrollHandler, true);
+                  window.removeEventListener('resize', panel._scrollHandler);
+                  delete panel._scrollHandler;
+                }
+                if (panel.parentNode) panel.parentNode.removeChild(panel);
+              }
               const performancePanel = document.getElementById('performance-empty-panel');
               if (performancePanel && performancePanel.parentNode) performancePanel.parentNode.removeChild(performancePanel);
               window.__tooltipLocked = false;
@@ -638,11 +654,60 @@ export default function Component3Cards({
 
                 // Remove any existing remix panel
                 const existingPanel = document.getElementById('locked-remix-panel');
-                if (existingPanel && existingPanel.parentNode) {
-                  existingPanel.parentNode.removeChild(existingPanel);
+                if (existingPanel) {
+                  // Clean up scroll listener
+                  if (existingPanel._scrollHandler) {
+                    window.removeEventListener('scroll', existingPanel._scrollHandler, true);
+                    window.removeEventListener('resize', existingPanel._scrollHandler);
+                    delete existingPanel._scrollHandler;
+                  }
+                  if (existingPanel.parentNode) existingPanel.parentNode.removeChild(existingPanel);
                 }
 
                 document.body.appendChild(remixContainer);
+
+                // Get card element for scroll tracking
+                const cardElement = document.querySelector(`[data-card-index="${originalCardIndex}"]`) || document.getElementById(cardInfo.id);
+                const initialCardRect = cardElement ? cardElement.getBoundingClientRect() : null;
+                const initialTooltipLeft = rect.left;
+                const initialTooltipTop = rect.top;
+                const initialBubbleTop = rect.bottom + 8;
+                const initialBubbleLeft = rect.left;
+                
+                // Function to update positions on scroll
+                const updatePositionsOnScroll = () => {
+                  requestAnimationFrame(() => {
+                    const tooltip = document.getElementById('custom-tooltip');
+                    const bubble = document.getElementById('locked-remix-panel');
+                    if (!tooltip || !bubble || !cardElement) return;
+                    
+                    const currentCardRect = cardElement.getBoundingClientRect();
+                    if (!initialCardRect) return;
+                    
+                    // Calculate scroll offset
+                    const scrollDeltaY = currentCardRect.top - initialCardRect.top;
+                    const scrollDeltaX = currentCardRect.left - initialCardRect.left;
+                    
+                    // Update tooltip position
+                    tooltip.style.top = `${initialTooltipTop + scrollDeltaY}px`;
+                    tooltip.style.left = `${initialTooltipLeft + scrollDeltaX}px`;
+                    
+                    // Update bubble position relative to tooltip
+                    const tooltipRect = tooltip.getBoundingClientRect();
+                    const bubbleTop = tooltipRect.bottom + 8;
+                    
+                    bubble.style.top = `${bubbleTop}px`;
+                    bubble.style.left = `${initialBubbleLeft + scrollDeltaX}px`;
+                  });
+                };
+                
+                // Add scroll listener
+                const scrollHandler = () => updatePositionsOnScroll();
+                window.addEventListener('scroll', scrollHandler, true);
+                window.addEventListener('resize', scrollHandler);
+                
+                // Store scroll handler for cleanup
+                remixContainer._scrollHandler = scrollHandler;
 
                 // Add event listeners for title editing
                 titleSpan.addEventListener('input', (e) => {
@@ -685,7 +750,15 @@ export default function Component3Cards({
               ev.stopPropagation();
               // Close remix rectangle
               const panel = document.getElementById('locked-remix-panel');
-              if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+              if (panel) {
+                // Clean up scroll listener
+                if (panel._scrollHandler) {
+                  window.removeEventListener('scroll', panel._scrollHandler, true);
+                  window.removeEventListener('resize', panel._scrollHandler);
+                  delete panel._scrollHandler;
+                }
+                if (panel.parentNode) panel.parentNode.removeChild(panel);
+              }
               // Apply selected state to Performance text
               performanceText.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
               performanceText.style.color = '#FFFFFF';
@@ -831,8 +904,14 @@ export default function Component3Cards({
             // Create or update remix panel below the tooltip, left-aligned
             try {
               const existingPanel = document.getElementById('locked-remix-panel');
-              if (existingPanel && existingPanel.parentNode) {
-                existingPanel.parentNode.removeChild(existingPanel);
+              if (existingPanel) {
+                // Clean up scroll listener
+                if (existingPanel._scrollHandler) {
+                  window.removeEventListener('scroll', existingPanel._scrollHandler, true);
+                  window.removeEventListener('resize', existingPanel._scrollHandler);
+                  delete existingPanel._scrollHandler;
+                }
+                if (existingPanel.parentNode) existingPanel.parentNode.removeChild(existingPanel);
               }
             
             // If tooltip doesn't exist (because onMouseEnter was blocked by recommendation bubble),
@@ -884,7 +963,15 @@ export default function Component3Cards({
                   const tooltip = document.getElementById('custom-tooltip');
                   if (tooltip) tooltip.remove();
                   const panel = document.getElementById('locked-remix-panel');
-                  if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+                  if (panel) {
+                    // Clean up scroll listener
+                    if (panel._scrollHandler) {
+                      window.removeEventListener('scroll', panel._scrollHandler, true);
+                      window.removeEventListener('resize', panel._scrollHandler);
+                      delete panel._scrollHandler;
+                    }
+                    if (panel.parentNode) panel.parentNode.removeChild(panel);
+                  }
                   const performancePanel = document.getElementById('performance-empty-panel');
                   if (performancePanel && performancePanel.parentNode) performancePanel.parentNode.removeChild(performancePanel);
                   window.__tooltipLocked = false;
@@ -977,6 +1064,49 @@ export default function Component3Cards({
             remixContainer.appendChild(buttonsDiv);
             
             document.body.appendChild(remixContainer);
+
+            // Get card element for scroll tracking
+            const cardElement = document.querySelector(`[data-card-index="${originalCardIndex}"]`) || document.getElementById(cardInfo.id);
+            const initialCardRect = cardElement ? cardElement.getBoundingClientRect() : null;
+            const initialTooltipLeft = rect.left;
+            const initialTooltipTop = rect.top;
+            const initialBubbleTop = rect.bottom + 8;
+            const initialBubbleLeft = rect.left;
+            
+            // Function to update positions on scroll
+            const updatePositionsOnScroll = () => {
+              requestAnimationFrame(() => {
+                const tooltip = document.getElementById('custom-tooltip');
+                const bubble = document.getElementById('locked-remix-panel');
+                if (!tooltip || !bubble || !cardElement) return;
+                
+                const currentCardRect = cardElement.getBoundingClientRect();
+                if (!initialCardRect) return;
+                
+                // Calculate scroll offset
+                const scrollDeltaY = currentCardRect.top - initialCardRect.top;
+                const scrollDeltaX = currentCardRect.left - initialCardRect.left;
+                
+                // Update tooltip position
+                tooltip.style.top = `${initialTooltipTop + scrollDeltaY}px`;
+                tooltip.style.left = `${initialTooltipLeft + scrollDeltaX}px`;
+                
+                // Update bubble position relative to tooltip
+                const tooltipRect = tooltip.getBoundingClientRect();
+                const bubbleTop = tooltipRect.bottom + 8;
+                
+                bubble.style.top = `${bubbleTop}px`;
+                bubble.style.left = `${initialBubbleLeft + scrollDeltaX}px`;
+              });
+            };
+            
+            // Add scroll listener
+            const scrollHandler = () => updatePositionsOnScroll();
+            window.addEventListener('scroll', scrollHandler, true);
+            window.addEventListener('resize', scrollHandler);
+            
+            // Store scroll handler for cleanup
+            remixContainer._scrollHandler = scrollHandler;
 
             const titleEl = remixContainer.querySelector('#locked-tooltip-title');
             const descEl = remixContainer.querySelector('#locked-tooltip-desc');
