@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embed Themer App Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .embed-wrapper {
+            position: relative;
+            width: 100%;
+            height: 800px; /* Adjust height as needed */
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .code-example {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+        .code-example code {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Themer App - Embedded Example</h1>
+        
+        <!-- Embed the app here -->
+        <div class="embed-wrapper">
+            <iframe 
+                src="https://your-vercel-app.vercel.app" 
+                title="Themer App"
+                allow="fullscreen"
+                loading="lazy">
+            </iframe>
+        </div>
+        
+        <div class="code-example">
+            <h3>Embed Code:</h3>
+            <code>
+&lt;div style="width: 100%; height: 800px; border: 2px solid #ddd; border-radius: 8px; overflow: hidden;"&gt;<br>
+&nbsp;&nbsp;&lt;iframe <br>
+&nbsp;&nbsp;&nbsp;&nbsp;src="https://your-vercel-app.vercel.app" <br>
+&nbsp;&nbsp;&nbsp;&nbsp;title="Themer App"<br>
+&nbsp;&nbsp;&nbsp;&nbsp;width="100%" <br>
+&nbsp;&nbsp;&nbsp;&nbsp;height="100%" <br>
+&nbsp;&nbsp;&nbsp;&nbsp;style="border: none;"<br>
+&nbsp;&nbsp;&nbsp;&nbsp;allow="fullscreen"&gt;<br>
+&nbsp;&nbsp;&lt;/iframe&gt;<br>
+&lt;/div&gt;
+            </code>
+        </div>
+        
+        <div class="code-example">
+            <h3>Responsive Embed (Medium Window):</h3>
+            <code>
+&lt;div style="max-width: 900px; margin: 0 auto; height: 700px; border: 2px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"&gt;<br>
+&nbsp;&nbsp;&lt;iframe <br>
+&nbsp;&nbsp;&nbsp;&nbsp;src="https://your-vercel-app.vercel.app" <br>
+&nbsp;&nbsp;&nbsp;&nbsp;title="Themer App"<br>
+&nbsp;&nbsp;&nbsp;&nbsp;width="100%" <br>
+&nbsp;&nbsp;&nbsp;&nbsp;height="100%" <br>
+&nbsp;&nbsp;&nbsp;&nbsp;style="border: none;"<br>
+&nbsp;&nbsp;&nbsp;&nbsp;allow="fullscreen"&gt;<br>
+&nbsp;&nbsp;&lt;/iframe&gt;<br>
+&lt;/div&gt;
+            </code>
+        </div>
+    </div>
+</body>
+</html>
