@@ -521,6 +521,10 @@ export default function LandingPage() {
         style={cardStyle}
         onMouseEnter={(e) => {
           if (window.__recommendedTooltipLocked) return;
+          // Check if any prompt bubble is open (recommendation or promo)
+          const hasOpenRecommendationBubble = document.querySelector('[id^="recommended-locked-remix-panel-"]');
+          const hasOpenPromoBubble = document.getElementById('locked-remix-panel');
+          if (hasOpenRecommendationBubble || hasOpenPromoBubble) return;
           const tooltip = document.createElement('div');
           tooltip.style.cssText = `
             position: fixed;
@@ -895,6 +899,10 @@ export default function LandingPage() {
         onMouseMove={(e) => {
           const tooltip = document.getElementById(`recommended-tooltip-${cardIndex}`);
           if (!tooltip || window.__recommendedTooltipLocked) return;
+          // Check if any prompt bubble is open (recommendation or promo)
+          const hasOpenRecommendationBubble = document.querySelector('[id^="recommended-locked-remix-panel-"]');
+          const hasOpenPromoBubble = document.getElementById('locked-remix-panel');
+          if (hasOpenRecommendationBubble || hasOpenPromoBubble) return;
           tooltip.style.left = `${e.clientX + 18}px`;
           tooltip.style.top = `${e.clientY + 18}px`;
         }}

@@ -475,6 +475,10 @@ export default function Component3Cards({
         className="h-[200px] relative shrink-0 flex items-center justify-center rounded-lg cursor-pointer hover:shadow-[0_0_0_3px_#1E1E1E] group"
         onMouseEnter={(e) => {
           if (window.__tooltipLocked) return; // prevent new tooltips while locked
+          // Check if any prompt bubble is open (promo or recommendation)
+          const hasOpenPromoBubble = document.getElementById('locked-remix-panel');
+          const hasOpenRecommendationBubble = document.querySelector('[id^="recommended-locked-remix-panel-"]');
+          if (hasOpenPromoBubble || hasOpenRecommendationBubble) return;
           // Create a lightweight, fixed-position tooltip that follows the cursor
           const tooltip = document.createElement('div');
           tooltip.style.cssText = `
@@ -715,6 +719,10 @@ export default function Component3Cards({
           // Keep tooltip anchored to the mouse pointer
           const tooltip = document.getElementById('custom-tooltip');
           if (!tooltip || window.__tooltipLocked) return;
+          // Check if any prompt bubble is open (promo or recommendation)
+          const hasOpenPromoBubble = document.getElementById('locked-remix-panel');
+          const hasOpenRecommendationBubble = document.querySelector('[id^="recommended-locked-remix-panel-"]');
+          if (hasOpenPromoBubble || hasOpenRecommendationBubble) return;
           tooltip.style.left = `${e.clientX + 18}px`;
           tooltip.style.top = `${e.clientY + 18}px`;
         }}
