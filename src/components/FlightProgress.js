@@ -1,5 +1,6 @@
 import './FlightProgress.css';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { getReadableOnColor } from '../utils/color';
 
 function parseTime(str) {
@@ -82,6 +83,7 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
   const [showPromptBubbleAtFJB, setShowPromptBubbleAtFJB] = useState(false);
   const [promptBubbleFJBPosition, setPromptBubbleFJBPosition] = useState({ x: 0, y: 0 });
   const [showClimbPointer, setShowClimbPointer] = useState(false);
+  const pointerElementRef = useRef(null);
   const [climbPointerPosition, setClimbPointerPosition] = useState({ x: 0, y: 0 });
   const [isClimbPointerAnimating, setIsClimbPointerAnimating] = useState(false);
   const [isClimbPointerClicking, setIsClimbPointerClicking] = useState(false);
@@ -434,6 +436,7 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
       // Start pointer at CLIMB position
       setClimbPointerPosition({ x: climbPositionX, y: climbPositionY });
       setShowClimbPointer(true);
+      setIsClimbPointerAnimating(true); // Enable animation state for smooth path following
       
       // Animate pointer following the red path: curve downward first, then move to card center
       const duration = 2000; // 2 seconds for realistic movement
@@ -557,6 +560,53 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
     
     return () => clearTimeout(startAnimation);
   }, [showClimbLabel, showMovingIcon, barWidth, isClimbPointerAnimating]);
+
+  // Manage pointer element via direct DOM manipulation to ensure it appears after tooltip/bubble
+  useEffect(() => {
+    if (!showClimbPointer || !showMovingIcon) {
+      // Remove pointer when not needed
+      if (pointerElementRef.current) {
+        pointerElementRef.current.remove();
+        pointerElementRef.current = null;
+      }
+      return;
+    }
+
+    // Create or update pointer element
+    if (!pointerElementRef.current) {
+      pointerElementRef.current = document.createElement('div');
+      pointerElementRef.current.className = 'dummy-mouse-pointer';
+      pointerElementRef.current.id = 'climb-dummy-pointer';
+      // Append to body - this ensures it's added AFTER tooltip/bubble in DOM order
+      document.body.appendChild(pointerElementRef.current);
+    }
+
+    // Update position and styles - useEffect already runs on position changes for smooth updates
+    const containerRect = barRef.current?.getBoundingClientRect();
+    const left = climbPointerPosition.x + (containerRect?.left || 0);
+    const top = climbPointerPosition.y + (containerRect?.top || 0);
+    const transform = `translate(-50%, -50%) ${isClimbPointerClicking ? 'scale(0.7)' : 'scale(1)'}`;
+    // Disable transition during animation for smooth path following, only use for click animation
+    const transition = isClimbPointerClicking ? 'transform 0.1s ease' : 'none';
+
+    pointerElementRef.current.style.cssText = `
+      position: fixed !important;
+      left: ${left}px;
+      top: ${top}px;
+      z-index: 2147483647 !important;
+      pointer-events: none;
+      transform: ${transform};
+      transition: ${transition};
+    `;
+
+    // Cleanup on unmount
+    return () => {
+      if (pointerElementRef.current) {
+        pointerElementRef.current.remove();
+        pointerElementRef.current = null;
+      }
+    };
+  }, [showClimbPointer, showMovingIcon, climbPointerPosition.x, climbPointerPosition.y, isClimbPointerClicking, isClimbPointerAnimating]);
 
   // Animation sequence: move to prompt bubble, type "Perfume" in title and desc, then save
   const animateTypingSequence = (titleInput, descInput, container, startPosition) => {
@@ -1242,22 +1292,8 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
       )}
       
       {/* Dummy mouse pointer for CLIMB animation - moves from CLIMB position to 2nd promo card */}
-      {showClimbPointer && showMovingIcon && (
-        <div 
-          className="dummy-mouse-pointer"
-          style={{
-            position: 'absolute',
-            left: `${climbPointerPosition.x}px`,
-            top: `${climbPointerPosition.y}px`,
-            zIndex: 2147483648, // Higher than prompt bubble (2147483647) to appear above it
-            pointerEvents: 'none',
-            transition: isClimbPointerAnimating ? 'none' : 'all 0.1s ease',
-            transform: `translate(-50%, -50%) ${isClimbPointerClicking ? 'scale(0.7)' : 'scale(1)'}`,
-            transition: isClimbPointerClicking ? 'transform 0.1s ease' : (isClimbPointerAnimating ? 'none' : 'left 0.1s ease, top 0.1s ease')
-          }}
-        >
-        </div>
-      )}
+      {/* Render pointer via portal to document.body to ensure it's above prompt bubble */}
+      {/* Pointer is managed via useEffect for DOM order control */}
       
       {/* Plus button at middle promo card position */}
       {showPlusButtonAtMiddleCard && showMovingIcon && (

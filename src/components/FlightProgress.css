@@ -60,12 +60,13 @@
 
 /* Dummy mouse pointer styles - White pointing hand */
 .dummy-mouse-pointer {
-  position: absolute;
+  position: fixed !important; /* Must be fixed to match prompt bubble's stacking context */
   animation: pointer-appear 0.5s ease-out;
   width: 24px;
   height: 28px;
   pointer-events: none;
-  z-index: 20;
+  /* z-index will be set inline - use maximum safe value */
+  z-index: 2147483647 !important;
   transform: translate(-50%, -50%);
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
 }
