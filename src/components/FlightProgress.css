@@ -58,31 +58,44 @@
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
-/* Dummy mouse pointer styles */
+/* Dummy mouse pointer styles - White pointing hand */
 .dummy-mouse-pointer {
   position: absolute;
   animation: pointer-appear 0.5s ease-out;
-  width: 16px;
-  height: 16px;
-  background: #333;
-  border-radius: 50%;
+  width: 24px;
+  height: 28px;
   pointer-events: none;
   z-index: 20;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   transform: translate(-50%, -50%);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
 }
 
 .dummy-mouse-pointer::before {
   content: '';
   position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   width: 20px;
-  height: 20px;
-  background: rgba(51, 51, 51, 0.2);
+  height: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='white' stroke='rgba(0,0,0,0.3)' stroke-width='0.5' d='M13 1.07V9h7c0 4.08-3.05 7.44-7 7.93v2.02c4.95-.5 9-4.76 9-9.95h-9V1.07zM11 1.07c-1.95.49-3.95 2.38-3.95 4.93 0 2.76 2.24 5 5 5s5-2.24 5-5c0-2.55-2-4.44-3.95-4.93V1.07z'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 1;
+}
+
+.dummy-mouse-pointer::after {
+  content: '';
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 50%;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  filter: blur(2px);
+  filter: blur(4px);
   z-index: -1;
 }
 

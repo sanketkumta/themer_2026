@@ -504,10 +504,11 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
               
               // Update pointer position to exact center
               const containerRect = barRef.current?.getBoundingClientRect();
+              let cardClickX, cardClickY;
               if (containerRect) {
-                const relativeX = centerX - containerRect.left;
-                const relativeY = centerY - containerRect.top;
-                setClimbPointerPosition({ x: relativeX, y: relativeY });
+                cardClickX = centerX - containerRect.left;
+                cardClickY = centerY - containerRect.top;
+                setClimbPointerPosition({ x: cardClickX, y: cardClickY });
               }
               
               // Trigger click after brief animation at exact center
@@ -520,9 +521,30 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
                 });
                 middleCardElement.dispatchEvent(clickEvent);
                 
-                // Reset click animation after click
+                // Reset click animation after click, but keep pointer visible
                 setTimeout(() => {
                   setIsClimbPointerClicking(false);
+                  // Keep pointer visible at card click position
+                  setShowClimbPointer(true);
+                  setClimbPointerPosition({ x: cardClickX, y: cardClickY });
+                  
+                  // Wait for prompt bubble to appear, then animate typing sequence
+                  const waitForBubble = setInterval(() => {
+                    const promptBubble = document.getElementById('locked-remix-panel');
+                    const titleInput = document.getElementById('locked-tooltip-title');
+                    const descInput = document.getElementById('locked-tooltip-desc');
+                    
+                    if (promptBubble && titleInput && descInput) {
+                      clearInterval(waitForBubble);
+                      
+                      // Pointer is already visible at card click position
+                      // Now start animation sequence: move from card click position to title input
+                      animateTypingSequence(titleInput, descInput, barRef.current, { x: cardClickX, y: cardClickY });
+                    }
+                  }, 100);
+                  
+                  // Timeout after 3 seconds if bubble doesn't appear
+                  setTimeout(() => clearInterval(waitForBubble), 3000);
                 }, 200);
               }, 150); // Brief pause for click animation
             }
@@ -535,6 +557,292 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
     
     return () => clearTimeout(startAnimation);
   }, [showClimbLabel, showMovingIcon, barWidth, isClimbPointerAnimating]);
+
+  // Animation sequence: move to prompt bubble, type "Perfume" in title and desc, then save
+  const animateTypingSequence = (titleInput, descInput, container, startPosition) => {
+    if (!titleInput || !descInput || !container) return;
+    
+    const containerRect = container.getBoundingClientRect();
+    const inputRect = titleInput.getBoundingClientRect();
+    
+    // DEBUG: Log positions to understand the coordinate system
+    console.log('=== POINTER POSITIONING DEBUG ===', {
+      containerRect: { top: containerRect.top, left: containerRect.left },
+      inputRect: { top: inputRect.top, left: inputRect.left, height: inputRect.height },
+      promptBubble: document.getElementById('locked-remix-panel')?.getBoundingClientRect(),
+      scrollY: window.pageYOffset || document.documentElement.scrollTop
+    });
+    
+    // Calculate position of title input relative to container
+    // The prompt bubble uses position:fixed, so inputRect is in viewport coordinates
+    // We need to convert to container-relative coordinates
+    // Account for scroll position: getBoundingClientRect() gives viewport coords, but we need container-relative
+    const inputX = inputRect.left + inputRect.width / 2 - containerRect.left;
+    // Position pointer at the top portion of the input field (not center) to appear above the text
+    // Use top + 25% of height instead of center (50%) to position it higher
+    // Both inputRect.top and containerRect.top are viewport coordinates, so subtraction gives relative position
+    const inputY = inputRect.top + (inputRect.height * 0.25) - containerRect.top;
+    
+    console.log('=== CALCULATED POINTER POSITION ===', {
+      inputX,
+      inputY,
+      calculatedFrom: {
+        inputTop: inputRect.top,
+        containerTop: containerRect.top,
+        difference: inputRect.top - containerRect.top,
+        inputHeight: inputRect.height,
+        finalY: inputY
+      }
+    });
+    
+    // Move pointer to title input (slowly) - start from card click position, not CLIMB position
+    const moveDuration = 1000; // 1 second to move to input
+    const startX = startPosition ? startPosition.x : climbPointerPosition.x;
+    const startY = startPosition ? startPosition.y : climbPointerPosition.y;
+    
+    // Set initial position to card click position
+    setClimbPointerPosition({ x: startX, y: startY });
+    setShowClimbPointer(true); // Ensure pointer is visible
+    
+    const moveStartTime = Date.now();
+    
+    const moveToInput = () => {
+      const elapsed = Date.now() - moveStartTime;
+      const progress = Math.min(elapsed / moveDuration, 1);
+      
+      const currentX = startX + (inputX - startX) * progress;
+      const currentY = startY + (inputY - startY) * progress;
+      
+      setClimbPointerPosition({ x: currentX, y: currentY });
+      
+      if (progress < 1) {
+        requestAnimationFrame(moveToInput);
+      } else {
+        // At input field - click on it
+        setClimbPointerPosition({ x: inputX, y: inputY });
+        
+        setTimeout(() => {
+          setIsClimbPointerClicking(true);
+          
+          // Focus and select all text in the input
+          titleInput.focus();
+          
+          // Select all text
+          const range = document.createRange();
+          range.selectNodeContents(titleInput);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          
+          // Reset click animation
+          setTimeout(() => {
+            setIsClimbPointerClicking(false);
+            
+            // Get current text (should be "Offers" or similar)
+            const currentText = titleInput.innerText || titleInput.textContent || '';
+            
+            // Delete text character by character (backspace simulation)
+            let textToDelete = currentText;
+            let deleteIndex = textToDelete.length;
+            const deleteDelay = 100; // 100ms per character
+            
+            const deleteText = () => {
+              if (deleteIndex > 0) {
+                // Simulate backspace
+                const newText = textToDelete.slice(0, deleteIndex - 1);
+                titleInput.innerText = newText;
+                titleInput.textContent = newText;
+                
+                // Trigger input event
+                const inputEvent = new InputEvent('input', {
+                  bubbles: true,
+                  cancelable: true,
+                  inputType: 'deleteContentBackward'
+                });
+                titleInput.dispatchEvent(inputEvent);
+                
+                deleteIndex--;
+                setTimeout(deleteText, deleteDelay);
+              } else {
+                // All text deleted, now type "Perfume"
+                const textToType = 'Perfume';
+                let typeIndex = 0;
+                const typeDelay = 150; // 150ms per character
+                
+                const typeText = () => {
+                  if (typeIndex < textToType.length) {
+                    const char = textToType[typeIndex];
+                    const currentText = titleInput.innerText || '';
+                    titleInput.innerText = currentText + char;
+                    titleInput.textContent = currentText + char;
+                    
+                    // Trigger input event
+                    const inputEvent = new InputEvent('input', {
+                      bubbles: true,
+                      cancelable: true,
+                      inputType: 'insertText',
+                      data: char
+                    });
+                    titleInput.dispatchEvent(inputEvent);
+                    
+                    typeIndex++;
+                    setTimeout(typeText, typeDelay);
+                  } else {
+                    // Title typing complete, now move to description field and type "perfume"
+                    const descRect = descInput.getBoundingClientRect();
+                    const descX = descRect.left + descRect.width / 2 - containerRect.left;
+                    const descY = descRect.top + descRect.height / 2 - containerRect.top;
+                    
+                    // Move to description field
+                    const descMoveDuration = 800; // 0.8 seconds
+                    const descStartX = inputX;
+                    const descStartY = inputY;
+                    const descMoveStartTime = Date.now();
+                    
+                    const moveToDesc = () => {
+                      const elapsed = Date.now() - descMoveStartTime;
+                      const progress = Math.min(elapsed / descMoveDuration, 1);
+                      
+                      const currentX = descStartX + (descX - descStartX) * progress;
+                      const currentY = descStartY + (descY - descStartY) * progress;
+                      
+                      setClimbPointerPosition({ x: currentX, y: currentY });
+                      
+                      if (progress < 1) {
+                        requestAnimationFrame(moveToDesc);
+                      } else {
+                        // At description field - click on it
+                        setClimbPointerPosition({ x: descX, y: descY });
+                        
+                        setTimeout(() => {
+                          setIsClimbPointerClicking(true);
+                          
+                          // Focus and clear description input
+                          descInput.focus();
+                          
+                          // Clear existing text
+                          descInput.innerText = '';
+                          descInput.textContent = '';
+                          
+                          // Reset click animation
+                          setTimeout(() => {
+                            setIsClimbPointerClicking(false);
+                            
+                            // Type "perfume" in description field
+                            const descTextToType = 'perfume';
+                            let descTypeIndex = 0;
+                            const descTypeDelay = 150; // 150ms per character
+                            
+                            const typeDescText = () => {
+                              if (descTypeIndex < descTextToType.length) {
+                                const char = descTextToType[descTypeIndex];
+                                const currentDescText = descInput.innerText || '';
+                                descInput.innerText = currentDescText + char;
+                                descInput.textContent = currentDescText + char;
+                                
+                                // Trigger input event
+                                const inputEvent = new InputEvent('input', {
+                                  bubbles: true,
+                                  cancelable: true,
+                                  inputType: 'insertText',
+                                  data: char
+                                });
+                                descInput.dispatchEvent(inputEvent);
+                                
+                                descTypeIndex++;
+                                setTimeout(typeDescText, descTypeDelay);
+                              } else {
+                                // Description typing complete, move to save button
+                                const saveButton = document.getElementById('locked-tooltip-save');
+                                if (saveButton) {
+                                  const saveRect = saveButton.getBoundingClientRect();
+                                  const saveX = saveRect.left + saveRect.width / 2 - containerRect.left;
+                                  const saveY = saveRect.top + saveRect.height / 2 - containerRect.top;
+                                  
+                                  // Move to save button
+                                  const saveMoveDuration = 800; // 0.8 seconds
+                                  const saveStartX = descX;
+                                  const saveStartY = descY;
+                                  const saveMoveStartTime = Date.now();
+                                  
+                                  const moveToSave = () => {
+                                    const elapsed = Date.now() - saveMoveStartTime;
+                                    const progress = Math.min(elapsed / saveMoveDuration, 1);
+                                    
+                                    const currentX = saveStartX + (saveX - saveStartX) * progress;
+                                    const currentY = saveStartY + (saveY - saveStartY) * progress;
+                                    
+                                    setClimbPointerPosition({ x: currentX, y: currentY });
+                                    
+                                    if (progress < 1) {
+                                      requestAnimationFrame(moveToSave);
+                                    } else {
+                                      // At save button - ensure pointer is at exact center
+                                      setClimbPointerPosition({ x: saveX, y: saveY });
+                                      
+                                      // Brief pause to show pointer at save button
+                                      setTimeout(() => {
+                                        setIsClimbPointerClicking(true);
+                                        
+                                        // Brief pause to show click animation
+                                        setTimeout(() => {
+                                          // Click save button to trigger save operation
+                                          const saveClickEvent = new MouseEvent('click', {
+                                            bubbles: true,
+                                            cancelable: true,
+                                            view: window,
+                                            clientX: saveRect.left + saveRect.width / 2,
+                                            clientY: saveRect.top + saveRect.height / 2
+                                          });
+                                          
+                                          // Dispatch the click event to trigger save
+                                          saveButton.dispatchEvent(saveClickEvent);
+                                          
+                                          // Also try direct click if event doesn't work
+                                          if (typeof saveButton.click === 'function') {
+                                            saveButton.click();
+                                          }
+                                          
+                                          // Reset click animation but keep pointer visible to show save operation
+                                          setTimeout(() => {
+                                            setIsClimbPointerClicking(false);
+                                            // Keep pointer visible longer to show save operation started
+                                            setTimeout(() => {
+                                              setShowClimbPointer(false);
+                                            }, 800); // Hide after 800ms to show save operation
+                                          }, 300);
+                                        }, 200); // Show click animation for 200ms
+                                      }, 200); // Pause before clicking
+                                    }
+                                  };
+                                  
+                                  requestAnimationFrame(moveToSave);
+                                }
+                              }
+                            };
+                            
+                            setTimeout(typeDescText, 200); // Brief pause before typing description
+                          }, 200);
+                        }, 150);
+                      }
+                    };
+                    
+                    requestAnimationFrame(moveToDesc);
+                  }
+                };
+                
+                setTimeout(typeText, 200); // Brief pause before typing
+              }
+            };
+            
+            setTimeout(deleteText, 200); // Brief pause before deleting
+          }, 200);
+        }, 150);
+      }
+    };
+    
+    requestAnimationFrame(moveToInput);
+  };
 
   // Drag logic (only start drag from icon)
   const handleIconMouseDown = (e) => {
@@ -941,7 +1249,7 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
             position: 'absolute',
             left: `${climbPointerPosition.x}px`,
             top: `${climbPointerPosition.y}px`,
-            zIndex: 20,
+            zIndex: 2147483648, // Higher than prompt bubble (2147483647) to appear above it
             pointerEvents: 'none',
             transition: isClimbPointerAnimating ? 'none' : 'all 0.1s ease',
             transform: `translate(-50%, -50%) ${isClimbPointerClicking ? 'scale(0.7)' : 'scale(1)'}`,
