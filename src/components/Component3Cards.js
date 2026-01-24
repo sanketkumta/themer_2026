@@ -31,7 +31,10 @@ export default function Component3Cards({
   selectedDates,
   isCurrentThemeFestive,
   getRouteSelectedThemeChip,
-  selectedProfile
+  selectedProfile,
+  hasReachedTakeoff = false,
+  visibleCardIndices = new Set(),
+  isCardAnimationInProgress = false
 }) {
   // Generate unique context key for state isolation
   // Include a themeVariantKey so that per-route theme tweaks (like chip selection or modified colors)
@@ -446,6 +449,13 @@ export default function Component3Cards({
 
   // Helper function to render a single card with original styling
   const renderCard = (originalCardIndex, displayPosition) => {
+    // Check if card should be visible (promo cards are indices 0-2)
+    const isCardVisible = visibleCardIndices.has(originalCardIndex);
+    // Check if climb phase is reached (for enabling interactions only)
+    const hasReachedClimb = selectedFlightPhase === 'climb';
+    // Show content when takeoff is reached and card is visible
+    const shouldShowContent = hasReachedTakeoff && isCardVisible;
+    
     // Simple card content - always show "Add experience"
     const cardContent = getDefaultCardContent(originalCardIndex);
     
@@ -481,7 +491,14 @@ export default function Component3Cards({
       <div
         key={`card-${originalCardIndex}-${displayPosition}`}
         className="h-[200px] relative shrink-0 flex items-center justify-center rounded-lg cursor-pointer hover:shadow-[0_0_0_3px_#1E1E1E] group"
+        style={{
+          ...cardStyle,
+          opacity: isCardVisible ? 1 : 0.3, // Fade in when visible
+          transition: 'opacity 0.2s ease-in'
+        }}
         onMouseEnter={(e) => {
+          // Disable interactions before climb phase
+          if (!hasReachedClimb) return;
           if (window.__tooltipLocked) return; // prevent new tooltips while locked
           
           // Check if any prompt bubble is open (promo card or recommendation card)
@@ -809,6 +826,8 @@ export default function Component3Cards({
           }
         }}
         onClick={(e) => {
+          // Disable clicks before climb phase
+          if (!hasReachedClimb) return;
           // Defer DOM manipulation to avoid conflicts with React's render cycle
           setTimeout(() => {
             // Lock the tooltip at the click position
@@ -1166,8 +1185,11 @@ export default function Component3Cards({
       >
           <div className="relative h-full w-full">
             
-            {/* Image area - show image if available OR if we have a remixed image, but only if theme is saved */}
-            {((cardContent.image || remixedImages[originalCardIndex]) && colorPromptSaved) && (
+            {/* Image area - show empty placeholder before takeoff, content after */}
+            {!shouldShowContent ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+              </div>
+            ) : ((cardContent.image || remixedImages[originalCardIndex]) && colorPromptSaved) ? (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-full h-full relative">
                   {/* Loading spinner */}
@@ -1257,7 +1279,7 @@ export default function Component3Cards({
                   })()}
                 </div>
               </div>
-            )}
+            ) : null}
             
 
             {/* Bottom rectangle with text field */}
@@ -1280,7 +1302,7 @@ export default function Component3Cards({
                      : { color: themeColor }
                    )
                  }}>
-                {displayTitle}
+                {shouldShowContent ? displayTitle : 'Add experience'}
               </p>
             </div>
           </div>

@@ -61,6 +61,7 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
   const [promptBubblePosition, setPromptBubblePosition] = useState({ x: 0, y: 0 });
   const [showTakeoffLabel, setShowTakeoffLabel] = useState(false);
   const [showCruiseLabel, setShowCruiseLabel] = useState(false);
+  const [showClimbLabel, setShowClimbLabel] = useState(false);
   const [movePointerToCard, setMovePointerToCard] = useState(false);
   const [pointerCardPosition, setPointerCardPosition] = useState({ x: 0, y: 0 });
   const [showPlusButtonAtCard, setShowPlusButtonAtCard] = useState(false);
@@ -80,6 +81,10 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
   const [showPlusButtonAtFJB, setShowPlusButtonAtFJB] = useState(false);
   const [showPromptBubbleAtFJB, setShowPromptBubbleAtFJB] = useState(false);
   const [promptBubbleFJBPosition, setPromptBubbleFJBPosition] = useState({ x: 0, y: 0 });
+  const [showClimbPointer, setShowClimbPointer] = useState(false);
+  const [climbPointerPosition, setClimbPointerPosition] = useState({ x: 0, y: 0 });
+  const [isClimbPointerAnimating, setIsClimbPointerAnimating] = useState(false);
+  const [isClimbPointerClicking, setIsClimbPointerClicking] = useState(false);
   const [showFlightPhases, setShowFlightPhases] = useState(false);
   const barRef = useRef();
   const iconRef = useRef();
@@ -282,6 +287,11 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
           setShowTakeoffLabel(true);
         }
         
+        // Show Climb label at 20% progress
+        if (newProgress >= 0.20 && newProgress <= 0.21 && !showClimbLabel) {
+          setShowClimbLabel(true);
+        }
+        
         // Pass animation progress to parent
         if (onAnimationProgress) {
           onAnimationProgress(newProgress);
@@ -363,7 +373,168 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
     // Start animation after a delay to ensure DOM is ready
     const timer = setTimeout(startAnimation, 1000); // 1 second delay
     return () => clearTimeout(timer);
-  }, [showMovingIcon, showTakeoffLabel, showCruiseLabel, hasReachedTarget]);
+  }, [showMovingIcon, showTakeoffLabel, showCruiseLabel, showClimbLabel, hasReachedTarget]);
+
+  // Animation when CLIMB phase is reached: move pointer to 2nd promo card and open tooltip
+  useEffect(() => {
+    if (!showClimbLabel || !showMovingIcon || isClimbPointerAnimating) return;
+    
+    // Wait a bit for CLIMB label to appear, then start animation
+    const startAnimation = setTimeout(() => {
+      setIsClimbPointerAnimating(true);
+      
+      // Calculate CLIMB position (20% of barWidth) - start position
+      const climbPositionX = barWidth * 0.20;
+      const climbPositionY = 48; // Below CLIMB label, same as plus button position
+      
+      // Calculate position for middle promo card (2nd card, index 1)
+      // First, try to get the actual card element to calculate real position
+      const selectors = [
+        '#node-82_35815', // Middle card ID
+        '[data-card-index="1"]',
+        '.flex.flex-row.gap-8 > div:nth-child(2)',
+        'div[style*="width: 416px"]:nth-child(2)'
+      ];
+      
+      let middleCardElement = null;
+      for (const selector of selectors) {
+        middleCardElement = document.querySelector(selector);
+        if (middleCardElement) break;
+      }
+      
+      let targetX, targetY;
+      
+      if (middleCardElement && barRef.current) {
+        // Get actual card position
+        const cardRect = middleCardElement.getBoundingClientRect();
+        const containerRect = barRef.current.getBoundingClientRect();
+        
+        // Calculate center of card relative to flight progress container
+        const centerX = cardRect.left + cardRect.width / 2;
+        const centerY = cardRect.top + cardRect.height / 2;
+        
+        targetX = centerX - containerRect.left;
+        targetY = centerY - containerRect.top;
+      } else {
+        // Fallback calculation if card not found yet
+        const containerWidth = 1302;
+        const cardWidth = 416;
+        const gap = 32;
+        const totalCardsWidth = cardWidth * 3 + gap * 2;
+        const startX = (containerWidth - totalCardsWidth) / 2;
+        const middleCardX = startX + cardWidth + gap; // 2nd card position
+        const middleCardY = 100; // Center of card height (200px / 2)
+        const flightProgressHeight = 32;
+        const gapBetweenFPSAndComponent3Cards = 32;
+        
+        targetX = middleCardX;
+        targetY = flightProgressHeight + gapBetweenFPSAndComponent3Cards + middleCardY;
+      }
+      
+      // Start pointer at CLIMB position
+      setClimbPointerPosition({ x: climbPositionX, y: climbPositionY });
+      setShowClimbPointer(true);
+      
+      // Animate pointer following the red path: curve downward first, then move to card center
+      const duration = 2000; // 2 seconds for realistic movement
+      const startTime = Date.now();
+      
+      // Path follows red line: starts at CLIMB, curves downward, then moves right to card center
+      // Control point 1: Curve downward (below CLIMB position)
+      const control1X = climbPositionX; // Same X as start
+      const control1Y = climbPositionY + 80; // Move down significantly
+      
+      // Control point 2: Move right toward card (before reaching card)
+      const control2X = climbPositionX + (targetX - climbPositionX) * 0.6; // 60% of the way horizontally
+      const control2Y = targetY - 20; // Slightly above target (card center)
+      
+      const animatePointer = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Linear progress for constant speed throughout (no easing)
+        const t = progress;
+        const mt = 1 - t;
+        const mt2 = mt * mt;
+        const mt3 = mt2 * mt;
+        const t2 = t * t;
+        const t3 = t2 * t;
+        
+        // Cubic Bezier: (1-t)³P₀ + 3(1-t)²tP₁ + 3(1-t)t²P₂ + t³P₃
+        const currentX = mt3 * climbPositionX + 
+                         3 * mt2 * t * control1X + 
+                         3 * mt * t2 * control2X + 
+                         t3 * targetX;
+        const currentY = mt3 * climbPositionY + 
+                         3 * mt2 * t * control1Y + 
+                         3 * mt * t2 * control2Y + 
+                         t3 * targetY;
+        
+        setClimbPointerPosition({ x: currentX, y: currentY });
+        
+        if (progress < 1) {
+          requestAnimationFrame(animatePointer);
+        } else {
+          // Animation complete - ensure we're exactly at center of card
+          setClimbPointerPosition({ x: targetX, y: targetY });
+          
+          // Add click animation (brief scale down/up effect)
+          setTimeout(() => {
+            setIsClimbPointerClicking(true);
+            
+            // Find the 2nd promo card (middle card, index 1)
+            const selectors = [
+              '#node-82_35815', // Middle card ID
+              '[data-card-index="1"]',
+              '.flex.flex-row.gap-8 > div:nth-child(2)',
+              'div[style*="width: 416px"]:nth-child(2)'
+            ];
+            
+            let middleCardElement = null;
+            for (const selector of selectors) {
+              middleCardElement = document.querySelector(selector);
+              if (middleCardElement) break;
+            }
+            
+            if (middleCardElement) {
+              const rect = middleCardElement.getBoundingClientRect();
+              // Calculate exact center of the card
+              const centerX = rect.left + rect.width / 2;
+              const centerY = rect.top + rect.height / 2;
+              
+              // Update pointer position to exact center
+              const containerRect = barRef.current?.getBoundingClientRect();
+              if (containerRect) {
+                const relativeX = centerX - containerRect.left;
+                const relativeY = centerY - containerRect.top;
+                setClimbPointerPosition({ x: relativeX, y: relativeY });
+              }
+              
+              // Trigger click after brief animation at exact center
+              setTimeout(() => {
+                const clickEvent = new MouseEvent('click', {
+                  bubbles: true,
+                  cancelable: true,
+                  clientX: centerX,
+                  clientY: centerY
+                });
+                middleCardElement.dispatchEvent(clickEvent);
+                
+                // Reset click animation after click
+                setTimeout(() => {
+                  setIsClimbPointerClicking(false);
+                }, 200);
+              }, 150); // Brief pause for click animation
+            }
+          }, 300); // Brief pause before click animation
+        }
+      };
+      
+      requestAnimationFrame(animatePointer);
+    }, 500); // Wait 500ms after CLIMB label appears
+    
+    return () => clearTimeout(startAnimation);
+  }, [showClimbLabel, showMovingIcon, barWidth, isClimbPointerAnimating]);
 
   // Drag logic (only start drag from icon)
   const handleIconMouseDown = (e) => {
@@ -596,6 +767,7 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
       className="flight-progress-bar-container"
       ref={barRef} 
       onClick={handleBarClick}
+      style={{ overflow: 'visible', height: 'auto', minHeight: '32px' }}
     >
       <div className="flight-path"></div>
       <div className="flight-progress" style={{ 
@@ -659,8 +831,8 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
         </svg>
       </div>
       
-      {/* Plus button below flight icon */}
-      {showPlusButton && showMovingIcon && !showPromptBubble && (
+      {/* Plus button below flight icon - DISABLED */}
+      {false && showPlusButton && showMovingIcon && !showPromptBubble && (
         <div 
           className="landing-plus-button"
           style={{
@@ -701,8 +873,8 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
         </div>
       )}
       
-      {/* Dummy mouse pointer */}
-      {showPointer && showMovingIcon && !movePointerToCard && !movePointerToSecondTile && (
+      {/* Dummy mouse pointer - DISABLED */}
+      {false && showPointer && showMovingIcon && !movePointerToCard && !movePointerToSecondTile && (
         <div 
           className="dummy-mouse-pointer"
           style={{
@@ -756,6 +928,24 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
             top: `${middleCardPosition.y}px`,
             zIndex: 20,
             pointerEvents: 'none'
+          }}
+        >
+        </div>
+      )}
+      
+      {/* Dummy mouse pointer for CLIMB animation - moves from CLIMB position to 2nd promo card */}
+      {showClimbPointer && showMovingIcon && (
+        <div 
+          className="dummy-mouse-pointer"
+          style={{
+            position: 'absolute',
+            left: `${climbPointerPosition.x}px`,
+            top: `${climbPointerPosition.y}px`,
+            zIndex: 20,
+            pointerEvents: 'none',
+            transition: isClimbPointerAnimating ? 'none' : 'all 0.1s ease',
+            transform: `translate(-50%, -50%) ${isClimbPointerClicking ? 'scale(0.7)' : 'scale(1)'}`,
+            transition: isClimbPointerClicking ? 'transform 0.1s ease' : (isClimbPointerAnimating ? 'none' : 'left 0.1s ease, top 0.1s ease')
           }}
         >
         </div>
@@ -904,7 +1094,53 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
       
 
       
-      {/* Cruise Label - Fixed at 20% position */}
+      {/* Climb Label - Fixed at 20% position */}
+      {showClimbLabel && (
+        <div 
+          className="flight-prompt-label"
+          style={{
+            position: 'absolute',
+            left: `${barWidth * 0.20}px`, // Fixed 20% position
+            top: '40px', // Same spacing as Takeoff label
+            ...(themeColor.includes('gradient') 
+              ? { background: themeColor, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }
+              : { color: onColor }
+            ),
+            fontSize: '10px',
+            fontWeight: 'bold',
+            textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+            zIndex: 10,
+            animation: 'label-appear 0.5s ease-out',
+            transform: 'translateX(-50%)', // Center the label text
+            transition: 'none' // Ensure no CSS transitions affect positioning
+          }}
+        >
+          CLIMB
+        </div>
+      )}
+      
+      {/* Climb Position Dot */}
+      {showClimbLabel && (
+        <div 
+          className="flight-progress-dot"
+          style={{
+            position: 'absolute',
+            left: `${barWidth * 0.20}px`, // Fixed 20% position
+            top: '14px', // Center of the progress bar (same as Takeoff dot)
+            width: '12px',
+            height: '12px',
+            backgroundColor: getElementColor(),
+            borderRadius: '50%',
+            zIndex: 1,
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+            transform: 'translateX(-50%)', // Center the dot
+            transition: 'none' // Ensure no CSS transitions affect positioning
+          }}
+        />
+      )}
+      
+      {/* Cruise Label - Fixed at 20% position (kept for backward compatibility) */}
       {showCruiseLabel && (
         <div 
           className="flight-prompt-label"

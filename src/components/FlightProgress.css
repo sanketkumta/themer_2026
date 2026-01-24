@@ -2,7 +2,9 @@
   position: relative;
   width: 1302px;
   height: 32px;
+  min-height: 32px;
   margin: 0 auto;
+  overflow: visible;
 }
 
 .flight-path {

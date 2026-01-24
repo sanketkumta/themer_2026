@@ -64,6 +64,66 @@ export default function LandingPage() {
   const [recommendedCardImageLoading, setRecommendedCardImageLoading] = useState({});
   const [recommendedCardTitles, setRecommendedCardTitles] = useState({});
   
+  // State for flight phase-based card visibility and interaction
+  const [hasReachedTakeoff, setHasReachedTakeoff] = useState(false);
+  const [hasReachedClimb, setHasReachedClimb] = useState(false);
+  const [visibleCardIndices, setVisibleCardIndices] = useState(new Set()); // Track which cards are visible (promo + recommended)
+  const [isCardAnimationInProgress, setIsCardAnimationInProgress] = useState(false);
+  
+  // Calculate current flight phase from progress
+  // takeoff = 5% (0.05), climb = 20% (0.20)
+  const getCurrentFlightPhase = (progress) => {
+    if (progress >= 0.20) return 'climb';
+    if (progress >= 0.05) return 'takeoff';
+    return 'pre-takeoff';
+  };
+  
+  // Monitor animation progress to detect phase changes
+  useEffect(() => {
+    const currentPhase = getCurrentFlightPhase(animationProgress);
+    
+    // When takeoff is reached for the first time, animate cards appearing
+    if (currentPhase === 'takeoff' && !hasReachedTakeoff) {
+      setHasReachedTakeoff(true);
+      setIsCardAnimationInProgress(true);
+      
+      // Animate cards appearing one by one (3 promo + 4 recommended = 7 cards total)
+      // Images will use the current selectedFlightPhase (default: 'cruise') until climb phase
+      const totalCards = 7;
+      const delayBetweenCards = 100; // 100ms delay between each card
+      
+      for (let i = 0; i < totalCards; i++) {
+        setTimeout(() => {
+          setVisibleCardIndices(prev => new Set([...prev, i]));
+          if (i === totalCards - 1) {
+            setIsCardAnimationInProgress(false);
+          }
+        }, i * delayBetweenCards);
+      }
+    }
+    
+    // When climb phase is reached, enable prompt bubbles and change images
+    if (currentPhase === 'climb' && !hasReachedClimb) {
+      setHasReachedClimb(true);
+      // Images will be changed based on selectedFlightPhase being set to 'climb'
+      setSelectedFlightPhase('climb');
+      
+      // Regenerate recommended card images with climb phase theme (Paris)
+      recommendedContentCards.forEach((card, index) => {
+        if (card.imageDescription) {
+          // Add Paris/climb context to image description for climb phase
+          const climbImageDescription = `${card.imageDescription} paris climb`;
+          const newImageUrl = getPollinationsImage(climbImageDescription, mockThemeColor, { randomize: true });
+          const timestamp = Date.now();
+          const separator = newImageUrl.includes('?') ? '&' : '?';
+          const newUrl = `${newImageUrl}${separator}t=${timestamp}`;
+          setRecommendedCardRemixedImage(index, newUrl);
+          setRecommendedCardImageLoadingState(index, true);
+        }
+      });
+    }
+  }, [animationProgress, hasReachedTakeoff, hasReachedClimb]);
+  
   const formatTime = (minutes) => {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
@@ -496,6 +556,11 @@ export default function LandingPage() {
   
   // Render function for recommended content cards
   const renderRecommendedCard = (cardIndex) => {
+    // Card index in visibleCardIndices: promo cards are 0-2, recommended cards are 3-6
+    const cardVisibilityIndex = cardIndex + 3; // Recommended cards start at index 3
+    const isCardVisible = visibleCardIndices.has(cardVisibilityIndex);
+    const shouldShowContent = hasReachedTakeoff && isCardVisible; // Show content at takeoff
+    
     const cardContent = getRecommendedCardContent(cardIndex);
     const displayTitle = getRecommendedCardTitle(cardIndex);
     const hasRemixedImage = !!getRecommendedCardRemixedImage(cardIndex);
@@ -510,7 +575,9 @@ export default function LandingPage() {
       borderBottomLeftRadius: '8px',
       borderBottomRightRadius: '8px',
       border: 'none',
-      marginTop: '1px'
+      marginTop: '1px',
+      opacity: isCardVisible ? 1 : 0.3, // Fade in when visible
+      transition: 'opacity 0.2s ease-in'
     };
     
     return (
@@ -520,6 +587,8 @@ export default function LandingPage() {
         className="overflow-clip relative shrink-0 flex items-center justify-center backdrop-blur-[10px] backdrop-filter group hover:shadow-[0_0_0_3px_#1E1E1E] cursor-pointer"
         style={cardStyle}
         onMouseEnter={(e) => {
+          // Disable interactions before climb phase
+          if (!hasReachedClimb) return;
           if (window.__recommendedTooltipLocked) return;
           
           // Check if any prompt bubble is open (promo card or recommendation card)
@@ -986,6 +1055,8 @@ export default function LandingPage() {
           if (tooltip && !window.__recommendedTooltipLocked) tooltip.remove();
         }}
         onClick={(e) => {
+          // Disable clicks before climb phase
+          if (!hasReachedClimb) return;
           setTimeout(() => {
             // Close any promo card prompt bubbles first
             const promoTooltip = document.getElementById('custom-tooltip');
@@ -1401,35 +1472,40 @@ export default function LandingPage() {
               )}
               
               {/* Image */}
-              <img 
-                src={imageSrc}
-                alt={cardContent.imageDescription || cardContent.title}
-                className="w-full h-full object-cover rounded-lg"
-                style={{ display: isRecommendedCardImageLoading(cardIndex) ? 'none' : 'block' }}
-                onLoad={() => {
-                  console.log('=== RECOMMENDED CARD IMAGE LOADED ===', { 
-                    cardIndex, 
-                    src: imageSrc,
-                    wasRemixed: hasRemixedImage
-                  });
-                  setRecommendedCardImageLoadingState(cardIndex, false);
-                }}
-                onError={(e) => {
-                  console.log('=== RECOMMENDED CARD IMAGE LOAD ERROR ===', { 
-                    src: e.target.src,
-                    cardIndex
-                  });
-                  setRecommendedCardImageLoadingState(cardIndex, false);
-                  e.target.style.display = 'none';
-                }}
-                onLoadStart={() => {
-                  console.log('=== RECOMMENDED CARD IMAGE LOAD START ===', { 
-                    cardIndex, 
-                    src: imageSrc
-                  });
-                  setRecommendedCardImageLoadingState(cardIndex, true);
-                }}
-              />
+              {shouldShowContent && imageSrc ? (
+                <img 
+                  src={imageSrc}
+                  alt={cardContent.imageDescription || cardContent.title}
+                  className="w-full h-full object-cover rounded-lg"
+                  style={{ display: isRecommendedCardImageLoading(cardIndex) ? 'none' : 'block' }}
+                  onLoad={() => {
+                    console.log('=== RECOMMENDED CARD IMAGE LOADED ===', { 
+                      cardIndex, 
+                      src: imageSrc,
+                      wasRemixed: hasRemixedImage
+                    });
+                    setRecommendedCardImageLoadingState(cardIndex, false);
+                  }}
+                  onError={(e) => {
+                    console.log('=== RECOMMENDED CARD IMAGE LOAD ERROR ===', { 
+                      src: e.target.src,
+                      cardIndex
+                    });
+                    setRecommendedCardImageLoadingState(cardIndex, false);
+                    e.target.style.display = 'none';
+                  }}
+                  onLoadStart={() => {
+                    console.log('=== RECOMMENDED CARD IMAGE LOAD START ===', { 
+                      cardIndex, 
+                      src: imageSrc
+                    });
+                    setRecommendedCardImageLoadingState(cardIndex, true);
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1458,7 +1534,7 @@ export default function LandingPage() {
                  : { color: mockThemeColor }
                )
              }}>
-            {displayTitle}
+            {shouldShowContent ? displayTitle : 'Add content'}
           </p>
         </div>
       </div>
@@ -1561,9 +1637,9 @@ export default function LandingPage() {
               <Component3Cards 
                 themeColor={mockThemeColor} 
                 routes={mockRoutes}
-                isPromptMode={cruiseLabelShown && !middleCardPromptClosed}
+                isPromptMode={hasReachedClimb && cruiseLabelShown && !middleCardPromptClosed}
                 onPromptHover={() => {}}
-                onPromptClick={handleMiddleCardPromptClick}
+                onPromptClick={hasReachedClimb ? handleMiddleCardPromptClick : () => {}} // Disable clicks before climb
                 promptStates={{ 'promo-card-0': false }} // Don't show promo card prompt bubble until FlightProgress controls it
                 animationProgress={animationProgress}
                 cruiseLabelShown={cruiseLabelShown}
@@ -1581,6 +1657,9 @@ export default function LandingPage() {
                 isCurrentThemeFestive={() => false}
                 getRouteSelectedThemeChip={() => null}
                 selectedProfile={null}
+                hasReachedTakeoff={hasReachedTakeoff}
+                visibleCardIndices={visibleCardIndices}
+                isCardAnimationInProgress={isCardAnimationInProgress}
               />
               
               {/* Debug Info */}
