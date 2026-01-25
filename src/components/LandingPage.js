@@ -111,8 +111,8 @@ export default function LandingPage() {
       // Regenerate recommended card images with climb phase theme (Paris)
       recommendedContentCards.forEach((card, index) => {
         if (card.imageDescription) {
-          // Add Paris/climb context to image description for climb phase
-          const climbImageDescription = `${card.imageDescription} paris climb`;
+          // Add Paris context to image description for climb phase
+          const climbImageDescription = `${card.imageDescription} Related to Paris`;
           const newImageUrl = getPollinationsImage(climbImageDescription, mockThemeColor, { randomize: true });
           const timestamp = Date.now();
           const separator = newImageUrl.includes('?') ? '&' : '?';
