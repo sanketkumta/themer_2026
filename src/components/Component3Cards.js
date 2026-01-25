@@ -32,9 +32,9 @@ export default function Component3Cards({
   isCurrentThemeFestive,
   getRouteSelectedThemeChip,
   selectedProfile,
-  hasReachedTakeoff = false,
-  visibleCardIndices = new Set(),
-  isCardAnimationInProgress = false
+  hasReachedTakeoff = undefined, // undefined = Dashboard mode, false/true = Landing Page mode
+  visibleCardIndices = undefined, // undefined = Dashboard mode, Set = Landing Page mode
+  isCardAnimationInProgress = undefined // undefined = Dashboard mode, false/true = Landing Page mode
 }) {
   // Generate unique context key for state isolation
   // Include a themeVariantKey so that per-route theme tweaks (like chip selection or modified colors)
@@ -449,20 +449,24 @@ export default function Component3Cards({
 
   // Helper function to render a single card with original styling
   const renderCard = (originalCardIndex, displayPosition) => {
-    // Phase-based visibility only applies in Landing Page (when animation is actively in progress)
-    // In Dashboard, always show content and enable interactions
-    // Check if we're in Landing Page mode: animation is in progress OR cards are being managed
-    // Dashboard doesn't use these props, so if animation is not in progress and no cards visible, it's Dashboard mode
-    const isLandingPageMode = isCardAnimationInProgress || (hasReachedTakeoff === true && visibleCardIndices.size > 0);
+    // Phase-based visibility only applies in Landing Page
+    // Dashboard doesn't pass hasReachedTakeoff prop, so it's undefined (uses default false)
+    // Landing Page explicitly passes hasReachedTakeoff (even if false initially)
+    // Check if we're in Landing Page mode: if hasReachedTakeoff prop was explicitly provided
+    // If hasReachedTakeoff is undefined, we're in Dashboard mode (always show content)
+    // If hasReachedTakeoff is provided (even if false), we're in Landing Page mode (phase-based visibility)
+    const isLandingPageMode = hasReachedTakeoff !== undefined;
     
     // Check if card should be visible (promo cards are indices 0-2)
     // In Dashboard mode, always visible
-    const isCardVisible = isLandingPageMode ? visibleCardIndices.has(originalCardIndex) : true;
+    // In Landing Page mode, check if card index is in visibleCardIndices
+    const isCardVisible = isLandingPageMode ? (visibleCardIndices && visibleCardIndices.has(originalCardIndex)) : true;
     // Check if climb phase is reached (for enabling interactions only)
     // In Dashboard mode, always enabled (no phase restrictions)
     const hasReachedClimb = isLandingPageMode ? (selectedFlightPhase === 'climb') : true;
     // Show content when takeoff is reached and card is visible
-    // In Dashboard mode, always show content
+    // In Dashboard mode (hasReachedTakeoff is undefined), always show content
+    // In Landing Page mode (hasReachedTakeoff is provided), only show when hasReachedTakeoff is true
     const shouldShowContent = isLandingPageMode ? (hasReachedTakeoff && isCardVisible) : true;
     
     // Simple card content - always show "Add experience"
@@ -1187,7 +1191,6 @@ export default function Component3Cards({
           // Tooltip stays until explicit close button is clicked
           }, 0); // Close setTimeout
         }}
-        style={cardStyle}
         data-name={cardInfo.name}
         data-card-index={originalCardIndex}
         id={cardInfo.id}
