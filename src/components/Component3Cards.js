@@ -449,12 +449,21 @@ export default function Component3Cards({
 
   // Helper function to render a single card with original styling
   const renderCard = (originalCardIndex, displayPosition) => {
+    // Phase-based visibility only applies in Landing Page (when animation is actively in progress)
+    // In Dashboard, always show content and enable interactions
+    // Check if we're in Landing Page mode: animation is in progress OR cards are being managed
+    // Dashboard doesn't use these props, so if animation is not in progress and no cards visible, it's Dashboard mode
+    const isLandingPageMode = isCardAnimationInProgress || (hasReachedTakeoff === true && visibleCardIndices.size > 0);
+    
     // Check if card should be visible (promo cards are indices 0-2)
-    const isCardVisible = visibleCardIndices.has(originalCardIndex);
+    // In Dashboard mode, always visible
+    const isCardVisible = isLandingPageMode ? visibleCardIndices.has(originalCardIndex) : true;
     // Check if climb phase is reached (for enabling interactions only)
-    const hasReachedClimb = selectedFlightPhase === 'climb';
+    // In Dashboard mode, always enabled (no phase restrictions)
+    const hasReachedClimb = isLandingPageMode ? (selectedFlightPhase === 'climb') : true;
     // Show content when takeoff is reached and card is visible
-    const shouldShowContent = hasReachedTakeoff && isCardVisible;
+    // In Dashboard mode, always show content
+    const shouldShowContent = isLandingPageMode ? (hasReachedTakeoff && isCardVisible) : true;
     
     // Simple card content - always show "Add experience"
     const cardContent = getDefaultCardContent(originalCardIndex);

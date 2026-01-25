@@ -58,17 +58,17 @@
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
-/* Dummy mouse pointer styles - White pointing hand */
+/* Dummy mouse pointer styles - White pointing hand with black outline */
 .dummy-mouse-pointer {
   position: fixed !important; /* Must be fixed to match prompt bubble's stacking context */
   animation: pointer-appear 0.5s ease-out;
-  width: 24px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   pointer-events: none;
   /* z-index will be set inline - use maximum safe value */
   z-index: 2147483647 !important;
   transform: translate(-50%, -50%);
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.3));
 }
 
 .dummy-mouse-pointer::before {
@@ -77,9 +77,10 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 20px;
-  height: 24px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='white' stroke='rgba(0,0,0,0.3)' stroke-width='0.5' d='M13 1.07V9h7c0 4.08-3.05 7.44-7 7.93v2.02c4.95-.5 9-4.76 9-9.95h-9V1.07zM11 1.07c-1.95.49-3.95 2.38-3.95 4.93 0 2.76 2.24 5 5 5s5-2.24 5-5c0-2.55-2-4.44-3.95-4.93V1.07z'/%3E%3C/svg%3E");
+  width: 32px;
+  height: 32px;
+  /* Classic Windows hand pointer - pointing hand with index finger extended */
+  background-image: url("data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13 1.07V9h7c0 4.08-3.05 7.44-7 7.93v2.02c4.95-.5 9-4.76 9-9.95h-9V1.07zM11 1.07c-1.95.49-3.95 2.38-3.95 4.93 0 2.76 2.24 5 5 5s5-2.24 5-5c0-2.55-2-4.44-3.95-4.93V1.07z' fill='white' stroke='black' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;

@@ -245,7 +245,7 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
 
     // Add a delay to ensure DOM elements are ready
     const startAnimation = () => {
-      const animationDuration = 8000; // 8 seconds to reach 20% (increased from 3 seconds)
+      const animationDuration = 4000; // 4 seconds to reach 20% (reduced by 50% from 8 seconds)
       const startTime = Date.now();
       // Always start from the highest progress we've achieved to prevent backward movement
       const currentProgress = Math.max(0.02, animationProgress);
@@ -674,8 +674,11 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
         setTimeout(() => {
           setIsClimbPointerClicking(true);
           
-          // Focus and select all text in the input
+            // Focus and select all text in the input
           titleInput.focus();
+          
+          // Make cursor visible during typing
+          titleInput.style.caretColor = 'auto';
           
           // Select all text
           const range = document.createRange();
@@ -703,6 +706,15 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
                 titleInput.innerText = newText;
                 titleInput.textContent = newText;
                 
+                // Position cursor at the end of remaining text
+                titleInput.focus();
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.selectNodeContents(titleInput);
+                range.collapse(false); // Collapse to end
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
                 // Trigger input event
                 const inputEvent = new InputEvent('input', {
                   bubbles: true,
@@ -725,6 +737,15 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
                     const currentText = titleInput.innerText || '';
                     titleInput.innerText = currentText + char;
                     titleInput.textContent = currentText + char;
+                    
+                    // Position cursor at the end of the text (after the newly typed character)
+                    titleInput.focus();
+                    const range = document.createRange();
+                    const selection = window.getSelection();
+                    range.selectNodeContents(titleInput);
+                    range.collapse(false); // Collapse to end
+                    selection.removeAllRanges();
+                    selection.addRange(range);
                     
                     // Trigger input event
                     const inputEvent = new InputEvent('input', {
@@ -770,6 +791,9 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
                           // Focus and clear description input
                           descInput.focus();
                           
+                          // Make cursor visible during typing
+                          descInput.style.caretColor = 'auto';
+                          
                           // Clear existing text
                           descInput.innerText = '';
                           descInput.textContent = '';
@@ -789,6 +813,15 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
                                 const currentDescText = descInput.innerText || '';
                                 descInput.innerText = currentDescText + char;
                                 descInput.textContent = currentDescText + char;
+                                
+                                // Position cursor at the end of the text (after the newly typed character)
+                                descInput.focus();
+                                const range = document.createRange();
+                                const selection = window.getSelection();
+                                range.selectNodeContents(descInput);
+                                range.collapse(false); // Collapse to end
+                                selection.removeAllRanges();
+                                selection.addRange(range);
                                 
                                 // Trigger input event
                                 const inputEvent = new InputEvent('input', {
