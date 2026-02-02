@@ -245,7 +245,7 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
 
     // Add a delay to ensure DOM elements are ready
     const startAnimation = () => {
-      const animationDuration = 4000; // 4 seconds to reach 20% (reduced by 50% from 8 seconds)
+      const animationDuration = 2000; // 2 seconds to reach 20% (50% of previous 4000ms)
       const startTime = Date.now();
       // Always start from the highest progress we've achieved to prevent backward movement
       const currentProgress = Math.max(0.02, animationProgress);
@@ -597,6 +597,7 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
       pointer-events: none;
       transform: ${transform};
       transition: ${transition};
+      --cursor-svg-url: url(${process.env.PUBLIC_URL}/cursor-themer.svg);
     `;
 
     // Cleanup on unmount
