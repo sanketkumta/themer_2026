@@ -361,7 +361,7 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
             background: #1E1E1E;
             color: white;
             padding: 4px 8px;
-            border-radius: 4px;
+            border-radius: 0 24px 24px 24px;
             font-size: 12px;
             z-index: 2147483647;
             pointer-events: auto;
@@ -424,7 +424,7 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
                   // Create the exact same UI as the built-in remix panel (directly positioned)
                   const remixContainer = document.createElement('div');
                   remixContainer.id = 'locked-remix-panel';
-                  remixContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
+                  remixContainer.className = 'px-4 py-3 flex flex-col items-center';
                   remixContainer.setAttribute('data-card-index', originalCardIndex); // Store card index for identification
                   
                   // Calculate proper spacing: bubble bottom should be 8px above tooltip top
@@ -444,7 +444,7 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
                     bubbleTop = Math.max(minTop, rect.top - tooltipHeight - spacing - bubbleHeight);
                   }
                   
-                  remixContainer.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + bubbleTop + 'px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px';
+                  remixContainer.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + bubbleTop + 'px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px;border-radius:0 24px 24px 24px';
 
                 // Create the text paragraph with contenteditable spans (exact same as built-in)
                 const textDiv = document.createElement('div');
@@ -495,21 +495,100 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
 
                 // Buttons container
                 const buttonsDiv = document.createElement('div');
-                buttonsDiv.className = 'flex gap-2';
+                buttonsDiv.className = 'flex gap-2 justify-end w-full';
 
-                // Remix button
+                // Remix button (icon only)
                 const lockedRemixBtn = document.createElement('button');
                 lockedRemixBtn.id = 'locked-tooltip-remix';
-                lockedRemixBtn.className = 'px-4 py-2 rounded-lg font-semibold text-xs uppercase transition-all duration-200 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed';
-                lockedRemixBtn.style.cssText = 'background-color: #10B981; color: white; border: 1px solid rgba(255, 255, 255, 0.3);';
-                lockedRemixBtn.textContent = '🎲 Remix Style';
+                lockedRemixBtn.className = 'flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
+                lockedRemixBtn.style.cssText = 'background-color: transparent; color: white; border: none; width: 36px; height: 36px; padding: 0; cursor: pointer;';
+                // Add hover state
+                lockedRemixBtn.addEventListener('mouseenter', () => {
+                  if (!lockedRemixBtn.disabled) {
+                    lockedRemixBtn.style.opacity = '0.8';
+                    lockedRemixBtn.style.transform = 'scale(1.1)';
+                  }
+                });
+                lockedRemixBtn.addEventListener('mouseleave', () => {
+                  if (!lockedRemixBtn.disabled) {
+                    lockedRemixBtn.style.opacity = '1';
+                    lockedRemixBtn.style.transform = 'scale(1)';
+                  }
+                });
+                // Add active/clicked state
+                lockedRemixBtn.addEventListener('mousedown', () => {
+                  if (!lockedRemixBtn.disabled) {
+                    lockedRemixBtn.style.transform = 'scale(0.95)';
+                    lockedRemixBtn.style.opacity = '0.7';
+                  }
+                });
+                lockedRemixBtn.addEventListener('mouseup', () => {
+                  if (!lockedRemixBtn.disabled) {
+                    lockedRemixBtn.style.transform = 'scale(1.1)';
+                    lockedRemixBtn.style.opacity = '0.8';
+                  }
+                });
+                lockedRemixBtn.addEventListener('mouseleave', () => {
+                  if (!lockedRemixBtn.disabled) {
+                    lockedRemixBtn.style.transform = 'scale(1)';
+                    lockedRemixBtn.style.opacity = '1';
+                  }
+                });
+                // Create ArrowPathIcon SVG
+                const remixIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                remixIcon.setAttribute('class', 'w-5 h-5');
+                remixIcon.setAttribute('fill', 'none');
+                remixIcon.setAttribute('stroke', 'currentColor');
+                remixIcon.setAttribute('viewBox', '0 0 24 24');
+                const remixPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                remixPath.setAttribute('stroke-linecap', 'round');
+                remixPath.setAttribute('stroke-linejoin', 'round');
+                remixPath.setAttribute('stroke-width', '2');
+                remixPath.setAttribute('d', 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15');
+                remixIcon.appendChild(remixPath);
+                lockedRemixBtn.appendChild(remixIcon);
 
                 // Save button
                 const lockedSaveBtn = document.createElement('button');
                 lockedSaveBtn.id = 'locked-tooltip-save';
-                lockedSaveBtn.className = 'px-4 py-2 rounded-lg font-semibold text-xs uppercase transition-all duration-200 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed';
-                lockedSaveBtn.style.cssText = 'background-color: #10B981; color: white; border: 1px solid rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px);';
-                lockedSaveBtn.textContent = '💾 Save';
+                lockedSaveBtn.className = 'px-4 py-2 font-semibold text-xs uppercase transition-all duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed';
+                lockedSaveBtn.style.cssText = 'background-color: #2563eb; color: white; border-top-left-radius: 0px; border-top-right-radius: 24px; border-bottom-left-radius: 24px; border-bottom-right-radius: 24px; border: none; cursor: pointer;';
+                lockedSaveBtn.textContent = 'Save';
+                // Add hover state
+                lockedSaveBtn.addEventListener('mouseenter', () => {
+                  if (!lockedSaveBtn.disabled) {
+                    lockedSaveBtn.style.opacity = '0.9';
+                    lockedSaveBtn.style.transform = 'scale(1.02)';
+                  }
+                });
+                lockedSaveBtn.addEventListener('mouseleave', () => {
+                  if (!lockedSaveBtn.disabled) {
+                    lockedSaveBtn.style.opacity = '1';
+                    lockedSaveBtn.style.transform = 'scale(1)';
+                  }
+                });
+                // Add active/clicked state
+                lockedSaveBtn.addEventListener('mousedown', () => {
+                  if (!lockedSaveBtn.disabled) {
+                    lockedSaveBtn.style.transform = 'scale(0.98)';
+                    lockedSaveBtn.style.opacity = '0.85';
+                    lockedSaveBtn.style.backgroundColor = '#1d4ed8';
+                  }
+                });
+                lockedSaveBtn.addEventListener('mouseup', () => {
+                  if (!lockedSaveBtn.disabled) {
+                    lockedSaveBtn.style.transform = 'scale(1.02)';
+                    lockedSaveBtn.style.opacity = '0.9';
+                    lockedSaveBtn.style.backgroundColor = '#2563eb';
+                  }
+                });
+                lockedSaveBtn.addEventListener('mouseleave', () => {
+                  if (!lockedSaveBtn.disabled) {
+                    lockedSaveBtn.style.transform = 'scale(1)';
+                    lockedSaveBtn.style.opacity = '1';
+                    lockedSaveBtn.style.backgroundColor = '#2563eb';
+                  }
+                });
 
                 buttonsDiv.appendChild(lockedRemixBtn);
                 buttonsDiv.appendChild(lockedSaveBtn);
@@ -629,8 +708,8 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
                 const rect = tooltip.getBoundingClientRect();
                 const emptyContainer = document.createElement('div');
                 emptyContainer.id = 'performance-empty-panel';
-                emptyContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
-                emptyContainer.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + (rect.top - 202) + 'px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px';
+                emptyContainer.className = 'px-4 py-3 flex flex-col items-center';
+                emptyContainer.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + (rect.top - 202) + 'px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px;border-radius:0 24px 24px 24px';
                 
                 // Create empty content
                 const emptyDiv = document.createElement('div');
@@ -672,7 +751,7 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
                 background: #1E1E1E;
                 color: white;
                 padding: 4px 8px;
-                border-radius: 4px;
+                border-radius: 0 24px 24px 24px;
                 font-size: 12px;
                 z-index: 2147483647;
                 pointer-events: auto;
@@ -746,7 +825,7 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
               // Create the exact same UI as the built-in remix panel (directly positioned)
               const remixContainer = document.createElement('div');
               remixContainer.id = 'locked-remix-panel';
-              remixContainer.className = 'px-4 py-3 rounded-lg flex flex-col items-center';
+              remixContainer.className = 'px-4 py-3 flex flex-col items-center';
               remixContainer.setAttribute('data-card-index', originalCardIndex); // Store card index for identification
               
               // Calculate proper spacing: bubble bottom should be 8px above tooltip top
@@ -766,7 +845,7 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
                 bubbleTop = Math.max(minTop, rect.top - tooltipHeight - spacing - bubbleHeight);
               }
               
-              remixContainer.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + bubbleTop + 'px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px';
+              remixContainer.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + bubbleTop + 'px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px;border-radius:0 24px 24px 24px';
 
             // Create the text paragraph with contenteditable spans (exact same as built-in)
             const textDiv = document.createElement('div');
@@ -817,22 +896,158 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
 
             // Create buttons container
             const buttonsDiv = document.createElement('div');
-            buttonsDiv.className = 'flex gap-2';
+            buttonsDiv.className = 'flex gap-2 justify-end w-full';
 
-            // Remix Style button (exact same as built-in)
+            // Upload button (icon only, no functionality)
+            const lockedUploadBtn = document.createElement('button');
+            lockedUploadBtn.id = 'locked-tooltip-upload';
+            lockedUploadBtn.className = 'flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
+            lockedUploadBtn.style.cssText = 'background-color: transparent; color: white; border: none; width: 36px; height: 36px; padding: 0; cursor: pointer;';
+            // Prevent any functionality
+            lockedUploadBtn.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            });
+            // Add hover state
+            lockedUploadBtn.addEventListener('mouseenter', () => {
+              if (!lockedUploadBtn.disabled) {
+                lockedUploadBtn.style.opacity = '0.8';
+                lockedUploadBtn.style.transform = 'scale(1.1)';
+              }
+            });
+            lockedUploadBtn.addEventListener('mouseleave', () => {
+              if (!lockedUploadBtn.disabled) {
+                lockedUploadBtn.style.opacity = '1';
+                lockedUploadBtn.style.transform = 'scale(1)';
+              }
+            });
+            // Add active/clicked state
+            lockedUploadBtn.addEventListener('mousedown', () => {
+              if (!lockedUploadBtn.disabled) {
+                lockedUploadBtn.style.transform = 'scale(0.95)';
+                lockedUploadBtn.style.opacity = '0.7';
+              }
+            });
+            lockedUploadBtn.addEventListener('mouseup', () => {
+              if (!lockedUploadBtn.disabled) {
+                lockedUploadBtn.style.transform = 'scale(1.1)';
+                lockedUploadBtn.style.opacity = '0.8';
+              }
+            });
+            lockedUploadBtn.addEventListener('mouseleave', () => {
+              if (!lockedUploadBtn.disabled) {
+                lockedUploadBtn.style.transform = 'scale(1)';
+                lockedUploadBtn.style.opacity = '1';
+              }
+            });
+            // Create ArrowUpTrayIcon SVG (upload icon)
+            const uploadIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            uploadIcon.setAttribute('class', 'w-5 h-5');
+            uploadIcon.setAttribute('fill', 'none');
+            uploadIcon.setAttribute('stroke', 'currentColor');
+            uploadIcon.setAttribute('viewBox', '0 0 24 24');
+            const uploadPath1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            uploadPath1.setAttribute('stroke-linecap', 'round');
+            uploadPath1.setAttribute('stroke-linejoin', 'round');
+            uploadPath1.setAttribute('stroke-width', '2');
+            uploadPath1.setAttribute('d', 'M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5');
+            uploadIcon.appendChild(uploadPath1);
+            lockedUploadBtn.appendChild(uploadIcon);
+
+            // Remix Style button (icon only)
             const lockedRemixBtn = document.createElement('button');
             lockedRemixBtn.id = 'locked-tooltip-remix';
-            lockedRemixBtn.className = 'px-4 py-2 rounded-lg font-semibold text-xs uppercase transition-all duration-200 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed';
-            lockedRemixBtn.style.cssText = 'background-color:#10B981;color:white;border:1px solid rgba(255,255,255,0.3)';
-            lockedRemixBtn.textContent = '🎲 Remix Style';
+            lockedRemixBtn.className = 'flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
+            lockedRemixBtn.style.cssText = 'background-color: transparent; color: white; border: none; width: 36px; height: 36px; padding: 0; cursor: pointer;';
+            // Add hover state
+            lockedRemixBtn.addEventListener('mouseenter', () => {
+              if (!lockedRemixBtn.disabled) {
+                lockedRemixBtn.style.opacity = '0.8';
+                lockedRemixBtn.style.transform = 'scale(1.1)';
+              }
+            });
+            lockedRemixBtn.addEventListener('mouseleave', () => {
+              if (!lockedRemixBtn.disabled) {
+                lockedRemixBtn.style.opacity = '1';
+                lockedRemixBtn.style.transform = 'scale(1)';
+              }
+            });
+            // Add active/clicked state
+            lockedRemixBtn.addEventListener('mousedown', () => {
+              if (!lockedRemixBtn.disabled) {
+                lockedRemixBtn.style.transform = 'scale(0.95)';
+                lockedRemixBtn.style.opacity = '0.7';
+              }
+            });
+            lockedRemixBtn.addEventListener('mouseup', () => {
+              if (!lockedRemixBtn.disabled) {
+                lockedRemixBtn.style.transform = 'scale(1.1)';
+                lockedRemixBtn.style.opacity = '0.8';
+              }
+            });
+            lockedRemixBtn.addEventListener('mouseleave', () => {
+              if (!lockedRemixBtn.disabled) {
+                lockedRemixBtn.style.transform = 'scale(1)';
+                lockedRemixBtn.style.opacity = '1';
+              }
+            });
+            // Create ArrowPathIcon SVG
+            const remixIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            remixIcon.setAttribute('class', 'w-5 h-5');
+            remixIcon.setAttribute('fill', 'none');
+            remixIcon.setAttribute('stroke', 'currentColor');
+            remixIcon.setAttribute('viewBox', '0 0 24 24');
+            const remixPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            remixPath.setAttribute('stroke-linecap', 'round');
+            remixPath.setAttribute('stroke-linejoin', 'round');
+            remixPath.setAttribute('stroke-width', '2');
+            remixPath.setAttribute('d', 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15');
+            remixIcon.appendChild(remixPath);
+            lockedRemixBtn.appendChild(remixIcon);
 
-            // Save button (exact same as built-in)
+            // Save button
             const lockedSaveBtn = document.createElement('button');
             lockedSaveBtn.id = 'locked-tooltip-save';
-            lockedSaveBtn.className = 'px-4 py-2 rounded-lg font-semibold text-xs uppercase transition-all duration-200 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed';
-            lockedSaveBtn.style.cssText = 'background-color:#10B981;color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(10px)';
-            lockedSaveBtn.textContent = '💾 Save';
+            lockedSaveBtn.className = 'px-4 py-2 font-semibold text-xs uppercase transition-all duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed';
+            lockedSaveBtn.style.cssText = 'background-color: #2563eb; color: white; border-top-left-radius: 0px; border-top-right-radius: 24px; border-bottom-left-radius: 24px; border-bottom-right-radius: 24px; border: none; cursor: pointer;';
+            lockedSaveBtn.textContent = 'Save';
+            // Add hover state
+            lockedSaveBtn.addEventListener('mouseenter', () => {
+              if (!lockedSaveBtn.disabled) {
+                lockedSaveBtn.style.opacity = '0.9';
+                lockedSaveBtn.style.transform = 'scale(1.02)';
+              }
+            });
+            lockedSaveBtn.addEventListener('mouseleave', () => {
+              if (!lockedSaveBtn.disabled) {
+                lockedSaveBtn.style.opacity = '1';
+                lockedSaveBtn.style.transform = 'scale(1)';
+              }
+            });
+            // Add active/clicked state
+            lockedSaveBtn.addEventListener('mousedown', () => {
+              if (!lockedSaveBtn.disabled) {
+                lockedSaveBtn.style.transform = 'scale(0.98)';
+                lockedSaveBtn.style.opacity = '0.85';
+                lockedSaveBtn.style.backgroundColor = '#1d4ed8';
+              }
+            });
+            lockedSaveBtn.addEventListener('mouseup', () => {
+              if (!lockedSaveBtn.disabled) {
+                lockedSaveBtn.style.transform = 'scale(1.02)';
+                lockedSaveBtn.style.opacity = '0.9';
+                lockedSaveBtn.style.backgroundColor = '#2563eb';
+              }
+            });
+            lockedSaveBtn.addEventListener('mouseleave', () => {
+              if (!lockedSaveBtn.disabled) {
+                lockedSaveBtn.style.transform = 'scale(1)';
+                lockedSaveBtn.style.opacity = '1';
+                lockedSaveBtn.style.backgroundColor = '#2563eb';
+              }
+            });
 
+            buttonsDiv.appendChild(lockedUploadBtn);
             buttonsDiv.appendChild(lockedRemixBtn);
             buttonsDiv.appendChild(lockedSaveBtn);
 
