@@ -597,7 +597,7 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
       pointer-events: none;
       transform: ${transform};
       transition: ${transition};
-      --cursor-svg-url: url(${process.env.PUBLIC_URL}/cursor-themer.svg);
+      --cursor-svg-url: url(${typeof window !== 'undefined' ? `${window.location.origin}${process.env.PUBLIC_URL || ''}` : ''}/cursor-themer.svg);
     `;
 
     // Cleanup on unmount
