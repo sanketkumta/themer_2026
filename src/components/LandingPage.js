@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { getReadableOnColor } from '../utils/color';
 import FlightJourneyBar from './FlightJourneyBar';
@@ -197,7 +197,7 @@ export default function LandingPage() {
   };
 
   // Backup: ensure theme updates when pointer "clicks" Save (in case React synthetic click doesn't fire)
-  const handleFJBThemeApplyRequest = (color) => {
+  const handleFJBThemeApplyRequest = useCallback((color) => {
     const normalized = (c) => c?.toLowerCase().replace(/\s/g, '');
     const idx = themeColors.findIndex(c => normalized(c) === normalized(color));
     setCurrentThemeColor(color);
@@ -205,10 +205,10 @@ export default function LandingPage() {
     setIsGradientMode(false);
     setShowFJBPrompt(false);
     setFjbThemeComplete(true);
-  };
+  }, []);
 
   // Called by FlightProgress when pointer "clicks" FJB - show theme bubble (Paris, Berlin, Oktoberfest)
-  const handleRequestFJBPrompt = () => {
+  const handleRequestFJBPrompt = useCallback(() => {
     const fjbElement = document.querySelector('[data-name="flight journey bar"]');
     if (fjbElement) {
       const rect = fjbElement.getBoundingClientRect();
@@ -218,7 +218,7 @@ export default function LandingPage() {
       });
       setShowFJBPrompt(true);
     }
-  };
+  }, []);
 
   const handleFJBPromptSubmit = (promptText, elementType, elementData, positionKey) => {
     setShowFJBPrompt(false);

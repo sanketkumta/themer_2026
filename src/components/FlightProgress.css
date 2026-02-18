@@ -61,7 +61,7 @@
 /* Dummy mouse pointer styles - White pointing hand with black outline */
 .dummy-mouse-pointer {
   position: fixed !important; /* Must be fixed to match prompt bubble's stacking context */
-  animation: pointer-appear 0.5s ease-out;
+  /* No appear animation - pointer is there and moves, never fades in/out */
   width: 29px;
   height: 30px;
   pointer-events: none;

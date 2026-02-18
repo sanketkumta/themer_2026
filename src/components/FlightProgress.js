@@ -86,6 +86,7 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
   const pointerElementRef = useRef(null);
   const climbPointerPositionRef = useRef({ x: 0, y: 0 });
   const isFJBThemePointerAnimatingRef = useRef(false);
+  const isPointerSequenceActiveRef = useRef(false); // Blocks Effect B for entire demo - one continuous flow
   const [climbPointerPosition, setClimbPointerPosition] = useState({ x: 0, y: 0 });
   const [isClimbPointerAnimating, setIsClimbPointerAnimating] = useState(false);
   const [isClimbPointerClicking, setIsClimbPointerClicking] = useState(false);
@@ -161,6 +162,8 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
       const fjbElement = document.querySelector('[data-name="flight journey bar"]');
       if (!fjbElement || !barRef.current) return;
       
+      isPointerSequenceActiveRef.current = true; // Block Effect B for entire demo - one continuous pointer flow
+      
       const fjbRect = fjbElement.getBoundingClientRect();
       const containerRect = barRef.current.getBoundingClientRect();
       const fjbCenterX = fjbRect.left + fjbRect.width / 2 - containerRect.left;
@@ -169,6 +172,9 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
       setShowClimbPointer(true);
       climbPointerPositionRef.current = { x: fjbCenterX, y: fjbCenterY };
       setClimbPointerPosition({ x: fjbCenterX, y: fjbCenterY });
+      requestAnimationFrame(() => {
+        updatePointerFromContainerCoords(fjbCenterX, fjbCenterY); // After Effect A creates pointer (Effect B is blocked)
+      });
       setIsClimbPointerAnimating(true);
       
       // Click animation
@@ -204,36 +210,19 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
         const saveCenterX = saveRect.left + saveRect.width / 2;
         const saveCenterY = saveRect.top + saveRect.height / 2;
         
-        // Start from FJB center (viewport) so pointer placement is correct regardless of prior state
-        const fjbEl = document.querySelector('[data-name="flight journey bar"]');
-        const fjbRect = fjbEl ? fjbEl.getBoundingClientRect() : null;
-        const startX = fjbRect ? fjbRect.left + fjbRect.width / 2 : (parisRect.left + parisRect.width / 2);
-        const startY = fjbRect ? fjbRect.top + fjbRect.height / 2 : (parisRect.top + parisRect.height / 2);
-        
-        // Place pointer at start before animating
-        updatePointerViewport(startX, startY);
+        // Place pointer at Paris - theme bubble flow starts from Paris, not FJB
+        updatePointerViewport(parisCenterX, parisCenterY);
         
         const moveDuration = 600;
-        const startTime = Date.now();
         
-        const animateToParis = () => {
-          const elapsed = Date.now() - startTime;
-          const rawProgress = Math.min(elapsed / moveDuration, 1);
-          const t = easeInOutCubic(rawProgress);
-          const x = startX + (parisCenterX - startX) * t;
-          const y = startY + (parisCenterY - startY) * t;
-          updatePointerViewport(x, y);
-          if (rawProgress < 1) {
-            requestAnimationFrame(animateToParis);
-          } else {
-            setIsClimbPointerClicking(true);
-            setTimeout(() => {
-              setIsClimbPointerClicking(false);
-              // Use dispatchEvent so React's synthetic handlers fire reliably
-              parisChip.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: parisCenterX, clientY: parisCenterY }));
-              setTimeout(() => {
-                const saveStartTime = Date.now();
-                const animateToSave = () => {
+        // Click Paris (pointer already there), then animate Paris -> Save
+        setIsClimbPointerClicking(true);
+        setTimeout(() => {
+          setIsClimbPointerClicking(false);
+          parisChip.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: parisCenterX, clientY: parisCenterY }));
+          setTimeout(() => {
+            const saveStartTime = Date.now();
+            const animateToSave = () => {
                   const elapsed = Date.now() - saveStartTime;
                   const rawProgress = Math.min(elapsed / moveDuration, 1);
                   const t = easeInOutCubic(rawProgress);
@@ -248,17 +237,21 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
                       setIsClimbPointerClicking(false);
                       saveBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: saveCenterX, clientY: saveCenterY }));
                       isFJBThemePointerAnimatingRef.current = false;
-                      // Always apply theme as backup - programmatic click may not trigger React handler when Save was disabled
+                      // Sync pointer state so Effect B and next animation use Save position - prevents random jump back to FJB
+                      const containerRect = barRef.current?.getBoundingClientRect();
+                      if (containerRect) {
+                        const saveX = saveCenterX - containerRect.left;
+                        const saveY = saveCenterY - containerRect.top;
+                        climbPointerPositionRef.current = { x: saveX, y: saveY };
+                        setClimbPointerPosition({ x: saveX, y: saveY });
+                      }
                       if (onFJBThemeApplyRequest) onFJBThemeApplyRequest('#FF6B6B');
                     }, 150);
                   }
-                };
-                requestAnimationFrame(animateToSave);
-              }, 800); // Wait for React to process Paris selection and enable Save button
-            }, 150);
-          }
-        };
-        requestAnimationFrame(animateToParis);
+            };
+            requestAnimationFrame(animateToSave);
+          }, 800); // Wait for React to process Paris selection and enable Save button
+        }, 150);
       });
       return true;
     };
@@ -481,6 +474,7 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
     
     // Wait a bit for CLIMB label to appear, then start animation
     const startAnimation = setTimeout(() => {
+      if (!onRequestFJBPrompt) isPointerSequenceActiveRef.current = true; // Non-FJB flow: block Effect B for sequence
       setIsClimbPointerAnimating(true);
       
       // Calculate CLIMB position (20% of barWidth) - start position
@@ -531,42 +525,28 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
         targetY = flightProgressHeight + gapBetweenFPSAndComponent3Cards + middleCardY;
       }
       
-      // Start pointer: from FJB if we just completed FJB phase, otherwise from CLIMB
+      // Start pointer: from current position (Save button) if we just completed FJB phase, otherwise from CLIMB
       let startX = climbPositionX, startY = climbPositionY;
       if (fjbThemeComplete && onRequestFJBPrompt) {
-        const fjbEl = document.querySelector('[data-name="flight journey bar"]');
-        if (fjbEl && barRef.current) {
-          const fjbR = fjbEl.getBoundingClientRect();
-          const contR = barRef.current.getBoundingClientRect();
-          startX = fjbR.left + fjbR.width / 2 - contR.left;
-          startY = fjbR.top + fjbR.height / 2 - contR.top;
-        }
+        // Use climbPointerPositionRef - Paris/Save syncs it to Save position before fjbThemeComplete
+        startX = climbPointerPositionRef.current.x;
+        startY = climbPointerPositionRef.current.y;
       }
       climbPointerPositionRef.current = { x: startX, y: startY };
       setClimbPointerPosition({ x: startX, y: startY });
       setShowClimbPointer(true);
       setIsClimbPointerAnimating(true);
       
-      const duration = 2000;
+      const duration = 1200;
       const startTime = Date.now();
-      
-      const control1X = startX;
-      const control1Y = startY + 80;
-      const control2X = startX + (targetX - startX) * 0.6;
-      const control2Y = targetY - 20;
       
       const animatePointer = () => {
         const elapsed = Date.now() - startTime;
         const rawProgress = Math.min(elapsed / duration, 1);
         const t = easeInOutCubic(rawProgress);
-        const mt = 1 - t;
-        const mt2 = mt * mt;
-        const mt3 = mt2 * mt;
-        const t2 = t * t;
-        const t3 = t2 * t;
-        
-        const currentX = mt3 * startX + 3 * mt2 * t * control1X + 3 * mt * t2 * control2X + t3 * targetX;
-        const currentY = mt3 * startY + 3 * mt2 * t * control1Y + 3 * mt * t2 * control2Y + t3 * targetY;
+        // Direct path to next click - no curves or random detours
+        const currentX = startX + (targetX - startX) * t;
+        const currentY = startY + (targetY - startY) * t;
         
         climbPointerPositionRef.current = { x: currentX, y: currentY };
         updatePointerFromContainerCoords(currentX, currentY);
@@ -699,10 +679,10 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
   }, [showClimbPointer, showMovingIcon]);
 
   // Effect B: Update position and transform only - no cleanup to prevent flicker during animation
-  // Skip position update when FJB theme pointer is animating (Paris/Save) - that animation uses viewport coords directly
+  // Skip position updates during entire pointer sequence - prevents glitches/repeats from multiple effects
   useEffect(() => {
     if (!pointerElementRef.current || !showClimbPointer || !showMovingIcon) return;
-    if (isFJBThemePointerAnimatingRef.current) {
+    if (isPointerSequenceActiveRef.current || isFJBThemePointerAnimatingRef.current) {
       // Only update transform for click animation, don't overwrite position
       pointerElementRef.current.style.transform = `translate(-50%, -50%) ${isClimbPointerClicking ? 'scale(0.7)' : 'scale(1)'}`;
       pointerElementRef.current.style.transition = isClimbPointerClicking ? 'transform 0.1s ease' : 'none';
@@ -731,15 +711,9 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
     const containerRect = container.getBoundingClientRect();
     const inputRect = titleInput.getBoundingClientRect();
     
-    // Calculate position of title input relative to container
-    // The prompt bubble uses position:fixed, so inputRect is in viewport coordinates
-    // We need to convert to container-relative coordinates
-    // Account for scroll position: getBoundingClientRect() gives viewport coords, but we need container-relative
+    // Exact center of title text field for pointer click position
     const inputX = inputRect.left + inputRect.width / 2 - containerRect.left;
-    // Position pointer at the top portion of the input field (not center) to appear above the text
-    // Use top + 25% of height instead of center (50%) to position it higher
-    // Both inputRect.top and containerRect.top are viewport coordinates, so subtraction gives relative position
-    const inputY = inputRect.top + (inputRect.height * 0.25) - containerRect.top;
+    const inputY = inputRect.top + inputRect.height / 2 - containerRect.top;
     
     const moveDuration = 1000;
     const startX = startPosition ? startPosition.x : climbPointerPositionRef.current.x;
@@ -771,7 +745,12 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
         setTimeout(() => {
           setIsClimbPointerClicking(true);
           
-            // Focus and select all text in the input
+          // Dispatch click at exact pointer position on title field
+          const clickX = inputRect.left + inputRect.width / 2;
+          const clickY = inputRect.top + inputRect.height / 2;
+          ['mousedown', 'mouseup', 'click'].forEach(type => {
+            titleInput.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX: clickX, clientY: clickY }));
+          });
           titleInput.focus();
           
           // Make cursor visible during typing
@@ -887,7 +866,12 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
                         setTimeout(() => {
                           setIsClimbPointerClicking(true);
                           
-                          // Focus and clear description input
+                          // Dispatch click at exact pointer position on description field
+                          const descClickX = descRect.left + descRect.width / 2;
+                          const descClickY = descRect.top + descRect.height / 2;
+                          ['mousedown', 'mouseup', 'click'].forEach(type => {
+                            descInput.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX: descClickX, clientY: descClickY }));
+                          });
                           descInput.focus();
                           
                           // Make cursor visible during typing
@@ -987,13 +971,10 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
                                             saveButton.click();
                                           }
                                           
-                                          // Reset click animation but keep pointer visible to show save operation
+                                          // Reset click animation - keep pointer visible throughout demo (no disappear)
                                           setTimeout(() => {
                                             setIsClimbPointerClicking(false);
-                                            // Keep pointer visible longer to show save operation started
-                                            setTimeout(() => {
-                                              setShowClimbPointer(false);
-                                            }, 800); // Hide after 800ms to show save operation
+                                            isPointerSequenceActiveRef.current = false; // Sequence complete - Effect B can take over
                                           }, 300);
                                         }, 200); // Show click animation for 200ms
                                       }, 200); // Pause before clicking
