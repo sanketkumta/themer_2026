@@ -1890,15 +1890,30 @@ export default function LandingPage() {
           </div>
         </div>
         
-        {/* Theme Preview Section */}
-        <div className="w-full flex justify-center" style={{ marginTop: 0 }}>
+        {/* Theme Preview Section - unclickable during demo */}
+        <div 
+          className="w-full flex justify-center" 
+          style={{ marginTop: 0, pointerEvents: showMovingIcon ? 'none' : 'auto' }}
+        >
           <div style={{ position: 'relative', width: 1400, height: 1100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
             <img
               src={process.env.PUBLIC_URL + '/ife-frame.svg'}
               alt="Mobile Frame"
               style={{ position: 'absolute', top: -40, left: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' }}
             />
-            <div style={{ position: 'relative', zIndex: 2, width: 1302, margin: '92px auto 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32 }}>
+            <div 
+              style={{ 
+                position: 'relative', 
+                zIndex: 2, 
+                width: 1302, 
+                margin: '92px auto 0 auto', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                gap: 32,
+                pointerEvents: showMovingIcon ? 'none' : 'auto'
+              }}
+            >
               <div className="fjb-fps-container" style={{ width: 1328, maxWidth: 1328, marginLeft: -2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24, background: mockThemeColor, borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 16, borderBottomRightRadius: 16, padding: 16, paddingTop: 80, paddingBottom: 40, marginTop: 4, position: 'relative' }}>
                 <div style={{ width: '100%', marginTop: -32, display: 'flex', flexDirection: 'column', gap: 28 }}>
                   <FlightJourneyBar origin={mockOrigin} destination={mockDestination} minutesLeft={minutesLeft} themeColor={mockThemeColor} isLandingPage={true} />
@@ -1957,9 +1972,33 @@ export default function LandingPage() {
                 isCardAnimationInProgress={isCardAnimationInProgress}
               />
               
+              {/* FJB Hover Tip - Profiles | Add theme | Animation (tooltip above theme bubble) */}
+              {showFJBPrompt && (
+                <div
+                  data-hover-tip="true"
+                  data-fjb-hover-tip="true"
+                  className="fixed flex items-center gap-2 px-3 py-2 rounded-2xl border shadow-md"
+                  style={{
+                    left: fJBPromptPosition.x - 100,
+                    top: Math.max(8, fJBPromptPosition.y - 36),
+                    zIndex: 999999998,
+                    pointerEvents: 'none',
+                    backgroundColor: '#1f2937',
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    borderTopLeftRadius: 0
+                  }}
+                >
+                  <span className="text-xs font-bold px-2 py-1 rounded" style={{ color: '#FFFFFF', opacity: 0.8 }}>Profiles</span>
+                  <div className="w-px h-4 bg-white/30" />
+                  <span className="text-xs font-bold px-2 py-1 rounded" style={{ color: '#FFFFFF', backgroundColor: 'rgba(255, 255, 255, 0.2)' }}>Add theme</span>
+                  <div className="w-px h-4 bg-white/30" />
+                  <span className="text-xs font-bold px-2 py-1 rounded" style={{ color: '#FFFFFF', opacity: 0.8 }}>Animation</span>
+                </div>
+              )}
               {/* FJB Theme Prompt Bubble - Paris, Berlin, Oktoberfest chips */}
               {showFJBPrompt && createPortal(
                 <PromptBubble
+                  isDemoMode={showMovingIcon}
                   isVisible={true}
                   position={fJBPromptPosition}
                   elementType="flight-journey-bar"

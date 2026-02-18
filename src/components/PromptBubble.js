@@ -48,7 +48,8 @@ export default function PromptBubble({
     selectedFlightSegment = null,
     selectedDates = [],
     modifiedChipColors = {},
-    setModifiedChipColors
+    setModifiedChipColors,
+    isDemoMode = false
 }) {
   console.log('=== PROMPT BUBBLE RENDER ===', {
     isVisible,
@@ -779,9 +780,9 @@ export default function PromptBubble({
       onVisibilityChange(isVisible);
     }
   }, [isVisible, elementType, onVisibilityChange]);
-  // Handle click outside to close
+  // Handle click outside to close (skip in demo mode - bubble has pointer-events: none so clicks pass through and would incorrectly trigger close)
   useEffect(() => {
-    if (!isVisible) return;
+    if (!isVisible || isDemoMode) return;
     const handleClickOutside = (event) => {
       // Don't close if clicking on the hover tip
       const isHoverTip = event.target.closest('[data-hover-tip]') || 
@@ -804,7 +805,7 @@ export default function PromptBubble({
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isVisible, onClose]);
+  }, [isVisible, isDemoMode, onClose]);
   const handleSubmit = (e) => {
     e.preventDefault();
     // Check if submission is valid based on element type and step
@@ -1005,7 +1006,7 @@ export default function PromptBubble({
         position: 'absolute',
         left: `${stickyPosition.x}px`,
         top: `${stickyPosition.y}px`,
-        pointerEvents: 'auto',
+        pointerEvents: isDemoMode ? 'none' : 'auto',
         backgroundColor: isGradient ? 'transparent' : actualBackgroundColor,
         backgroundImage: isGradient ? actualBackgroundColor : 'none',
         borderColor: elementType === 'promo-card' && positionKey === 'middle-card-demo'
