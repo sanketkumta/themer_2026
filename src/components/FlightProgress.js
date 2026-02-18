@@ -675,13 +675,16 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
       document.body.appendChild(pointerElementRef.current);
     }
 
+    // Use inline data URL so pointer works on Vercel, Safari, Mac - no external fetch or url()-in-var Safari quirk
+    const cursorSvg = '<svg width="29" height="30" viewBox="0 0 29 30" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.07786 4.53889C1.62118 2.87152 3.35219 1.44928 4.8993 2.22073L25.0316 12.2596C26.6745 13.0788 26.4388 15.4932 24.6682 15.9782C24.0007 16.161 23.2882 16.3562 22.5442 16.56C18.1551 17.7621 14.484 20.7778 12.4548 24.8511C12.1873 25.388 11.9295 25.9057 11.6845 26.3975C10.8657 28.0416 8.45001 27.8039 7.96482 26.0325L2.07786 4.53889Z" fill="black" fill-opacity="0.88"/><path d="M0.148913 5.06767C-0.764431 1.73301 2.69733 -1.11172 5.79149 0.430955L25.9243 10.47C29.2083 12.1078 28.7395 16.9371 25.1968 17.9075C24.5294 18.0903 23.8167 18.2848 23.0727 18.4886C19.2323 19.5404 16.0198 22.1792 14.2446 25.7425C13.9772 26.2794 13.72 26.7976 13.4751 27.2894C11.8358 30.5808 7.00482 30.0994 6.03563 26.5608L0.148913 5.06767ZM4.89891 2.22099C3.35186 1.44976 1.62096 2.87206 2.07762 4.53935L7.96434 26.0325C8.43436 27.7486 10.7164 28.0252 11.603 26.5462L11.6841 26.3978C11.929 25.9059 12.1871 25.3878 12.4546 24.8509C14.4204 20.9048 17.9275 17.9516 22.1352 16.678L22.5444 16.5599L24.6684 15.9778C26.3834 15.5078 26.6582 13.228 25.1802 12.3411L25.0317 12.2601L4.89891 2.22099Z" fill="url(#paint0_linear_80_16)" fill-opacity="0.7"/><defs><linearGradient id="paint0_linear_80_16" x1="12.4699" y1="-2.94537" x2="20.9232" y2="27.9179" gradientUnits="userSpaceOnUse"><stop stop-color="#FFA403"/><stop offset="0.201923" stop-color="#FF473E"/><stop offset="0.403846" stop-color="#B758D0"/><stop offset="0.610577" stop-color="#1197F5"/><stop offset="0.807692" stop-color="#50CA27"/><stop offset="0.995192" stop-color="#FFD203"/></linearGradient></defs></svg>';
+    const cursorDataUrl = "data:image/svg+xml," + encodeURIComponent(cursorSvg);
     const baseStyles = `
       position: fixed !important;
       z-index: 2147483647 !important;
       pointer-events: none;
       will-change: transform;
       visibility: visible !important;
-      --cursor-svg-url: url(${typeof window !== 'undefined' ? `${window.location.origin}${process.env.PUBLIC_URL || ''}` : ''}/cursor-themer.svg);
+      --cursor-svg-url: url("${cursorDataUrl}");
     `;
     pointerElementRef.current.style.cssText = baseStyles;
 
