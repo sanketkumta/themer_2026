@@ -519,14 +519,14 @@ export default function PromptBubble({
     rafId = requestAnimationFrame(updateToHoverTip);
     return () => cancelAnimationFrame(rafId);
   }, [isVisible, elementType, bubbleWidth]);
-  // Auto-typing effect for middle card landing page and FJB landing page
+  // Auto-typing effect for middle card landing page; FJB landing uses theme chips only (no typing)
   useEffect(() => {
-    if (isVisible && ((positionKey === 'middle-card-landing' && elementType === 'promo-card') || (positionKey === 'fjb-landing' && (elementType === 'flight-journey-bar' || elementType === 'flight-journey-bar-animation'))) && !autoTyping) {
+    if (isVisible && (positionKey === 'middle-card-landing' && elementType === 'promo-card') && !autoTyping) {
       console.log('=== STARTING AUTO TYPING ===', { positionKey, elementType });
-      setIsLoading(false); // Stop loading state
+      setIsLoading(false);
       setAutoTyping(true);
       setAutoTypeIndex(0);
-      setPromptText(''); // Clear any existing text
+      setPromptText('');
     }
   }, [isVisible, positionKey, elementType, autoTyping]);
   // Auto-typing animation
@@ -1468,6 +1468,10 @@ export default function PromptBubble({
                     });
                   });
                 }
+                // 6. For fjb-landing demo: add Oktoberfest (Beerfest) chip
+                if (positionKey === 'fjb-landing') {
+                  customChips.push({ label: 'Oktoberfest', color: '#FCD34D', originalColor: '#FCD34D', isFestival: true });
+                }
                 return customChips;
               })().map((chip, idx) => {
                 // Get the original chip color for the color circle
@@ -1492,6 +1496,7 @@ export default function PromptBubble({
                     onClick={() => handleColorChange(displayColor, chip)}
                     className={`transition-colors`}
                     title={chip.isFestival ? `${label} - ${chip.location} (${chip.type})` : label}
+                    {...(positionKey === 'fjb-landing' && label === 'Paris' ? { 'data-fjb-chip': 'Paris' } : {})}
                   >
                     <div 
                       className={`flex items-center gap-2 px-2 py-1 border rounded-full max-w-full`} 
@@ -1597,6 +1602,7 @@ export default function PromptBubble({
               {/* Save Button - right side */}
               <button
                 type="button"
+                {...(positionKey === 'fjb-landing' ? { id: 'fjb-landing-save' } : {})}
                 disabled={!pendingColor || isLoading}
                 onClick={() => {
                   if (pendingColor && onThemeColorChange) {

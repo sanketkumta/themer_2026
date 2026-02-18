@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { getReadableOnColor } from '../utils/color';
 import FlightJourneyBar from './FlightJourneyBar';
 import FlightProgress from './FlightProgress';
 import Component3Cards from './Component3Cards';
+import PromptBubble from './PromptBubble';
 import { getPollinationsImage } from '../utils/unsplash';
 
 // Helper function to generate AI images for content cards
@@ -27,10 +29,12 @@ export default function LandingPage() {
   const [promoCardLoading, setPromoCardLoading] = useState(false);
   const [promoCardFinishedLoading, setPromoCardFinishedLoading] = useState(false);
   const [animationProgress, setAnimationProgress] = useState(0);
-  // Theme colors for landing page (brand blue)
-  // Using a single brand color to avoid cycling and ensure consistency
+  // Theme colors for landing page: brand blue, Paris, Berlin, Oktoberfest (FJB demo chips)
   const themeColors = [
-    '#2563eb'
+    '#2563eb',  // Brand blue (initial)
+    '#FF6B6B',  // Paris (coral-red)
+    '#45B7D1',  // Berlin (teal)
+    '#FCD34D'   // Oktoberfest (yellow)
   ];
   
   const [cruiseLabelShown, setCruiseLabelShown] = useState(false);
@@ -39,6 +43,7 @@ export default function LandingPage() {
   const [middleCardPromptPosition, setMiddleCardPromptPosition] = useState({ x: 0, y: 0 });
   const [showFJBPrompt, setShowFJBPrompt] = useState(false);
   const [fJBPromptPosition, setFJBPromptPosition] = useState({ x: 0, y: 0 });
+  const [fjbThemeComplete, setFjbThemeComplete] = useState(false);
   const [recommendedTiles, setRecommendedTiles] = useState([
     { id: 1, color: themeColors[0] },
     { id: 2, color: themeColors[0] },
@@ -191,16 +196,37 @@ export default function LandingPage() {
     setShowFJBPrompt(false);
   };
 
+  // Backup: ensure theme updates when pointer "clicks" Save (in case React synthetic click doesn't fire)
+  const handleFJBThemeApplyRequest = (color) => {
+    const normalized = (c) => c?.toLowerCase().replace(/\s/g, '');
+    const idx = themeColors.findIndex(c => normalized(c) === normalized(color));
+    setCurrentThemeColor(color);
+    if (idx !== -1) setCurrentThemeColorIndex(idx);
+    setIsGradientMode(false);
+    setShowFJBPrompt(false);
+    setFjbThemeComplete(true);
+  };
+
+  // Called by FlightProgress when pointer "clicks" FJB - show theme bubble (Paris, Berlin, Oktoberfest)
+  const handleRequestFJBPrompt = () => {
+    const fjbElement = document.querySelector('[data-name="flight journey bar"]');
+    if (fjbElement) {
+      const rect = fjbElement.getBoundingClientRect();
+      setFJBPromptPosition({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      });
+      setShowFJBPrompt(true);
+    }
+  };
+
   const handleFJBPromptSubmit = (promptText, elementType, elementData, positionKey) => {
     setShowFJBPrompt(false);
     
-    // Update theme color to gradient green for FJB landing page
     if (positionKey === 'fjb-landing') {
-      
-      // Set the theme color directly to the gradient and enable gradient mode
-      const gradientColor = 'linear-gradient(120deg, #d4fc79 0%, #96e6a1 100%)';
-      setCurrentThemeColor(gradientColor);
-      setIsGradientMode(true);
+      // Paris theme primary color (coral-red from theme chips)
+      setCurrentThemeColor('#FF6B6B');
+      setIsGradientMode(false);
       
       // Generate AI images for content cards when color is saved
       const contentCardTitles = [
@@ -284,38 +310,26 @@ export default function LandingPage() {
     setShowMiddleCardPrompt(false);
     setMiddleCardPromptClosed(true);
     handleMiddleCardPromptClose(true);
-    
-    // Trigger FJB prompt bubble after middle card is complete
-    setTimeout(() => {
-      const fjbElement = document.querySelector('[data-name="flight journey bar"]');
-      if (fjbElement) {
-        const rect = fjbElement.getBoundingClientRect();
-        const position = {
-          x: rect.left + rect.width / 2 + 20, // Center + offset for plus button
-          y: rect.top + rect.height / 2
-        };
-        setFJBPromptPosition(position);
-        setShowFJBPrompt(true);
-      } else {
-        console.error('FJB element not found');
-      }
-    }, 1000); // 1 second delay after middle card prompt closes
   };
 
   const handleThemeColorChange = (newColor) => {
-    // Update the theme color when changed from the color picker
-    
-    // Check if it's a gradient
     const isGradient = newColor.includes('gradient');
     setIsGradientMode(isGradient);
     setCurrentThemeColor(newColor);
     
-    // Also update the index if the color is in our predefined array (only for solid colors)
     if (!isGradient) {
-      const colorIndex = themeColors.indexOf(newColor);
+      // Find matching theme index (normalize for hex comparison)
+      const normalized = (c) => c?.toLowerCase().replace(/\s/g, '');
+      const colorIndex = themeColors.findIndex(c => normalized(c) === normalized(newColor));
       if (colorIndex !== -1) {
         setCurrentThemeColorIndex(colorIndex);
       }
+    }
+    
+    // When FJB prompt is open and user saves theme, close prompt and signal completion
+    if (showFJBPrompt) {
+      setShowFJBPrompt(false);
+      setFjbThemeComplete(true);
     }
   };
 
@@ -1905,6 +1919,10 @@ export default function LandingPage() {
                     onCruiseLabelShow={handleCruiseLabelShow}
                     onMiddleCardPromptClose={handleMiddleCardPromptClose}
                     onThemeColorChange={handleThemeColorChange}
+                    onRequestFJBPrompt={handleRequestFJBPrompt}
+                    fjbThemeComplete={fjbThemeComplete}
+                    showFJBPrompt={showFJBPrompt}
+                    onFJBThemeApplyRequest={handleFJBThemeApplyRequest}
                     flightsGenerated={false}
                     onFlightPhaseSelect={() => {}}
                     selectedFlightPhase={null}
@@ -1914,7 +1932,7 @@ export default function LandingPage() {
               <Component3Cards 
                 themeColor={mockThemeColor} 
                 routes={mockRoutes}
-                isPromptMode={hasReachedClimb && cruiseLabelShown && !middleCardPromptClosed}
+                isPromptMode={hasReachedClimb && cruiseLabelShown && fjbThemeComplete && !middleCardPromptClosed}
                 onPromptHover={() => {}}
                 onPromptClick={hasReachedClimb ? handleMiddleCardPromptClick : () => {}} // Disable clicks before climb
                 promptStates={{ 'promo-card-0': false }} // Don't show promo card prompt bubble until FlightProgress controls it
@@ -1939,11 +1957,31 @@ export default function LandingPage() {
                 isCardAnimationInProgress={isCardAnimationInProgress}
               />
               
+              {/* FJB Theme Prompt Bubble - Paris, Berlin, Oktoberfest chips */}
+              {showFJBPrompt && createPortal(
+                <PromptBubble
+                  isVisible={true}
+                  position={fJBPromptPosition}
+                  elementType="flight-journey-bar"
+                  elementData={{ origin: mockOrigin, destination: mockDestination }}
+                  onClose={handleFJBPromptBubbleClose}
+                  onSubmit={handleFJBPromptSubmit}
+                  themeColor={mockThemeColor}
+                  isThemeBuildStarted={true}
+                  positionKey="fjb-landing"
+                  selectedFlightSegment={{ origin: mockOrigin, destination: mockDestination }}
+                  selectedDates={['2024-09-15']}
+                  onThemeColorChange={handleThemeColorChange}
+                />,
+                document.body
+              )}
+
               {/* Debug Info */}
               {console.log('=== COMPONENT RENDER DEBUG ===', {
                 cruiseLabelShown,
                 middleCardPromptClosed,
-                isPromptMode: cruiseLabelShown && !middleCardPromptClosed,
+                fjbThemeComplete,
+                showFJBPrompt,
                 showMiddleCardPrompt,
                 showMovingIcon
               })}

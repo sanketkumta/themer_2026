@@ -18,7 +18,7 @@ function formatTime(minutes) {
   return `LANDING IN ${h}H ${m.toString().padStart(2, '0')}M`;
 }
 
-export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFlightMinutes = 370, minutesLeft: externalMinutesLeft, onProgressChange, themeColor = '#1E72AE', isPromptMode = false, onPromptHover, onPromptClick, fpsPrompts = {}, showMovingIcon = false, onAnimationProgressChange, onPromoCardLoadingChange, onAnimationProgress, onCruiseLabelShow, onMiddleCardPromptClose, onThemeColorChange, flightsGenerated = false, onFlightPhaseSelect, selectedFlightPhase = null }) {
+export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFlightMinutes = 370, minutesLeft: externalMinutesLeft, onProgressChange, themeColor = '#1E72AE', isPromptMode = false, onPromptHover, onPromptClick, fpsPrompts = {}, showMovingIcon = false, onAnimationProgressChange, onPromoCardLoadingChange, onAnimationProgress, onCruiseLabelShow, onMiddleCardPromptClose, onThemeColorChange, onRequestFJBPrompt, fjbThemeComplete = false, showFJBPrompt = false, onFJBThemeApplyRequest, flightsGenerated = false, onFlightPhaseSelect, selectedFlightPhase = null }) {
   
   // Helper function to determine color based on theme type
   const getElementColor = () => {
@@ -84,9 +84,34 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
   const [promptBubbleFJBPosition, setPromptBubbleFJBPosition] = useState({ x: 0, y: 0 });
   const [showClimbPointer, setShowClimbPointer] = useState(false);
   const pointerElementRef = useRef(null);
+  const climbPointerPositionRef = useRef({ x: 0, y: 0 });
+  const isFJBThemePointerAnimatingRef = useRef(false);
   const [climbPointerPosition, setClimbPointerPosition] = useState({ x: 0, y: 0 });
   const [isClimbPointerAnimating, setIsClimbPointerAnimating] = useState(false);
   const [isClimbPointerClicking, setIsClimbPointerClicking] = useState(false);
+
+  // Easing: ease-in-out for smooth acceleration/deceleration
+  const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+  // Update pointer position via direct DOM - avoids React re-renders and prevents flicker
+  const updatePointerViewport = (viewportLeft, viewportTop) => {
+    if (pointerElementRef.current) {
+      pointerElementRef.current.style.transition = 'none'; // No interpolation during animation
+      pointerElementRef.current.style.left = `${viewportLeft}px`;
+      pointerElementRef.current.style.top = `${viewportTop}px`;
+      document.body.appendChild(pointerElementRef.current); // Keep on top layer
+    }
+  };
+
+  // Convert container-relative coords to viewport and update pointer
+  const updatePointerFromContainerCoords = (x, y) => {
+    const containerRect = barRef.current?.getBoundingClientRect();
+    if (containerRect && pointerElementRef.current) {
+      const viewportLeft = containerRect.left + x;
+      const viewportTop = containerRect.top + y;
+      updatePointerViewport(viewportLeft, viewportTop);
+    }
+  };
   const [showFlightPhases, setShowFlightPhases] = useState(false);
   const barRef = useRef();
   const iconRef = useRef();
@@ -127,60 +152,130 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
     });
   }, [showPromptBubble, showMovingIcon, hasReachedTarget, animationProgress]);
 
-  // Move pointer to FJB after middle card prompt closes
+  // FJB theme animation phase: runs FIRST when CLIMB reached (before middle card)
+  // Pointer clicks FJB -> theme bubble opens (Paris, Berlin, Oktoberfest) -> Paris selected -> FJB color changes
   useEffect(() => {
-    if (middleCardPromptClosed && showMovingIcon) {
+    if (!showClimbLabel || !showMovingIcon || !onRequestFJBPrompt || fjbThemeComplete) return;
+    
+    const startFJBPhase = setTimeout(() => {
+      const fjbElement = document.querySelector('[data-name="flight journey bar"]');
+      if (!fjbElement || !barRef.current) return;
       
-      // Move pointer to FJB after a delay
+      const fjbRect = fjbElement.getBoundingClientRect();
+      const containerRect = barRef.current.getBoundingClientRect();
+      const fjbCenterX = fjbRect.left + fjbRect.width / 2 - containerRect.left;
+      const fjbCenterY = fjbRect.top + fjbRect.height / 2 - containerRect.top;
+      
+      setShowClimbPointer(true);
+      climbPointerPositionRef.current = { x: fjbCenterX, y: fjbCenterY };
+      setClimbPointerPosition({ x: fjbCenterX, y: fjbCenterY });
+      setIsClimbPointerAnimating(true);
+      
+      // Click animation
+      setTimeout(() => setIsClimbPointerClicking(true), 200);
       setTimeout(() => {
-        setShowPointer(false);
-        setMovePointerToMiddleCard(false);
-        setShowPlusButtonAtMiddleCard(false);
-        setMovePointerToFJB(true);
+        setIsClimbPointerClicking(false);
+        onRequestFJBPrompt();
+        setIsClimbPointerAnimating(false); // Allow promo card phase to run when fjbThemeComplete
+      }, 350);
+    }, 800); // Delay after CLIMB label appears
+    
+    return () => clearTimeout(startFJBPhase);
+  }, [showClimbLabel, showMovingIcon, onRequestFJBPrompt, fjbThemeComplete]);
+
+  // When FJB theme bubble appears: animate pointer to Paris chip -> click -> animate to Save -> click
+  useEffect(() => {
+    if (!showFJBPrompt || !showMovingIcon || !pointerElementRef.current) return;
+    
+    const runParisAndSaveAnimation = () => {
+      const parisChip = document.querySelector('[data-fjb-chip="Paris"]');
+      const saveBtn = document.getElementById('fjb-landing-save');
+      if (!parisChip || !saveBtn) return false;
+      
+      // Reserve animation control immediately so Effect B doesn't overwrite pointer position
+      isFJBThemePointerAnimatingRef.current = true;
+      
+      // Use requestAnimationFrame to ensure bubble has finished layout
+      requestAnimationFrame(() => {
+        const parisRect = parisChip.getBoundingClientRect();
+        const saveRect = saveBtn.getBoundingClientRect();
+        const parisCenterX = parisRect.left + parisRect.width / 2;
+        const parisCenterY = parisRect.top + parisRect.height / 2;
+        const saveCenterX = saveRect.left + saveRect.width / 2;
+        const saveCenterY = saveRect.top + saveRect.height / 2;
         
-        // Show plus button after pointer appears at FJB
-        setTimeout(() => {
-          setShowPlusButtonAtFJB(true);
-          
-          // Show prompt bubble after plus button appears
-          setTimeout(() => {
-            // Calculate FJB prompt bubble position
-            // Add a small delay to ensure DOM is ready
+        // Start from FJB center (viewport) so pointer placement is correct regardless of prior state
+        const fjbEl = document.querySelector('[data-name="flight journey bar"]');
+        const fjbRect = fjbEl ? fjbEl.getBoundingClientRect() : null;
+        const startX = fjbRect ? fjbRect.left + fjbRect.width / 2 : (parisRect.left + parisRect.width / 2);
+        const startY = fjbRect ? fjbRect.top + fjbRect.height / 2 : (parisRect.top + parisRect.height / 2);
+        
+        // Place pointer at start before animating
+        updatePointerViewport(startX, startY);
+        
+        const moveDuration = 600;
+        const startTime = Date.now();
+        
+        const animateToParis = () => {
+          const elapsed = Date.now() - startTime;
+          const rawProgress = Math.min(elapsed / moveDuration, 1);
+          const t = easeInOutCubic(rawProgress);
+          const x = startX + (parisCenterX - startX) * t;
+          const y = startY + (parisCenterY - startY) * t;
+          updatePointerViewport(x, y);
+          if (rawProgress < 1) {
+            requestAnimationFrame(animateToParis);
+          } else {
+            setIsClimbPointerClicking(true);
             setTimeout(() => {
-              // Calculate absolute position like Dashboard does
-              // Find the flight progress bar container to get its absolute position
-              const flightProgressContainer = document.querySelector('.flight-progress-bar-container');
-              if (flightProgressContainer) {
-                const containerRect = flightProgressContainer.getBoundingClientRect();
-                
-                // Plus button is at barWidth / 2 + 20, top: -12px (relative to progress bar)
-                // Calculate absolute position relative to viewport
-                const absoluteX = containerRect.left + barWidth / 2 + 20; // Plus button X (no spacing)
-                const absoluteY = containerRect.top + (-12 + 16); // Plus button Y + half button height (reduced Y distance)
-                
-                console.log('=== FJB POSITION DEBUG ===', {
-                  barWidth,
-                  containerRect: { left: containerRect.left, top: containerRect.top },
-                  absoluteX,
-                  absoluteY
-                });
-                
-                setPromptBubbleFJBPosition({ x: absoluteX, y: absoluteY });
-                              setShowPromptBubbleAtFJB(true);
-                console.log('=== PROMPT BUBBLE AT FJB ===', {
-                  showPromptBubbleAtFJB: true, 
-                  showMovingIcon,
-                  position: { x: absoluteX, y: absoluteY } 
-                });
-              } else {
-                console.error('flight-progress-bar-container not found');
-              }
-            }, 100); // Small delay to ensure DOM is ready
-                      }, 800); // 0.8 second delay after plus button appears
-        }, 300); // 0.3 second delay after pointer appears at FJB
-      }, 500); // 0.5 second delay after middle card prompt closed
-    }
-  }, [middleCardPromptClosed, showMovingIcon]);
+              setIsClimbPointerClicking(false);
+              // Use dispatchEvent so React's synthetic handlers fire reliably
+              parisChip.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: parisCenterX, clientY: parisCenterY }));
+              setTimeout(() => {
+                const saveStartTime = Date.now();
+                const animateToSave = () => {
+                  const elapsed = Date.now() - saveStartTime;
+                  const rawProgress = Math.min(elapsed / moveDuration, 1);
+                  const t = easeInOutCubic(rawProgress);
+                  const x = parisCenterX + (saveCenterX - parisCenterX) * t;
+                  const y = parisCenterY + (saveCenterY - parisCenterY) * t;
+                  updatePointerViewport(x, y);
+                  if (rawProgress < 1) {
+                    requestAnimationFrame(animateToSave);
+                  } else {
+                    setIsClimbPointerClicking(true);
+                    setTimeout(() => {
+                      setIsClimbPointerClicking(false);
+                      saveBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: saveCenterX, clientY: saveCenterY }));
+                      isFJBThemePointerAnimatingRef.current = false;
+                      // Always apply theme as backup - programmatic click may not trigger React handler when Save was disabled
+                      if (onFJBThemeApplyRequest) onFJBThemeApplyRequest('#FF6B6B');
+                    }, 150);
+                  }
+                };
+                requestAnimationFrame(animateToSave);
+              }, 800); // Wait for React to process Paris selection and enable Save button
+            }, 150);
+          }
+        };
+        requestAnimationFrame(animateToParis);
+      });
+      return true;
+    };
+    
+    const timeout = setTimeout(() => {
+      if (!runParisAndSaveAnimation()) {
+        const retry = setInterval(() => {
+          if (runParisAndSaveAnimation()) clearInterval(retry);
+        }, 100);
+        setTimeout(() => {
+          clearInterval(retry);
+          isFJBThemePointerAnimatingRef.current = false;
+        }, 3000);
+      }
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [showFJBPrompt, showMovingIcon, onFJBThemeApplyRequest]);
 
   // If externalMinutesLeft is provided, use it as the source of truth
   const displayMinutes = typeof externalMinutesLeft === 'number' ? externalMinutesLeft : parseTime(landingIn);
@@ -378,8 +473,11 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
   }, [showMovingIcon, showTakeoffLabel, showCruiseLabel, showClimbLabel, hasReachedTarget]);
 
   // Animation when CLIMB phase is reached: move pointer to 2nd promo card and open tooltip
+  // If onRequestFJBPrompt exists (Landing Page), wait for fjbThemeComplete first; otherwise run immediately
   useEffect(() => {
-    if (!showClimbLabel || !showMovingIcon || isClimbPointerAnimating) return;
+    if (!showClimbLabel || !showMovingIcon) return;
+    if (onRequestFJBPrompt && !fjbThemeComplete) return; // Wait for FJB theme phase first
+    if (isClimbPointerAnimating) return;
     
     // Wait a bit for CLIMB label to appear, then start animation
     const startAnimation = setTimeout(() => {
@@ -433,52 +531,50 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
         targetY = flightProgressHeight + gapBetweenFPSAndComponent3Cards + middleCardY;
       }
       
-      // Start pointer at CLIMB position
-      setClimbPointerPosition({ x: climbPositionX, y: climbPositionY });
+      // Start pointer: from FJB if we just completed FJB phase, otherwise from CLIMB
+      let startX = climbPositionX, startY = climbPositionY;
+      if (fjbThemeComplete && onRequestFJBPrompt) {
+        const fjbEl = document.querySelector('[data-name="flight journey bar"]');
+        if (fjbEl && barRef.current) {
+          const fjbR = fjbEl.getBoundingClientRect();
+          const contR = barRef.current.getBoundingClientRect();
+          startX = fjbR.left + fjbR.width / 2 - contR.left;
+          startY = fjbR.top + fjbR.height / 2 - contR.top;
+        }
+      }
+      climbPointerPositionRef.current = { x: startX, y: startY };
+      setClimbPointerPosition({ x: startX, y: startY });
       setShowClimbPointer(true);
-      setIsClimbPointerAnimating(true); // Enable animation state for smooth path following
+      setIsClimbPointerAnimating(true);
       
-      // Animate pointer following the red path: curve downward first, then move to card center
-      const duration = 2000; // 2 seconds for realistic movement
+      const duration = 2000;
       const startTime = Date.now();
       
-      // Path follows red line: starts at CLIMB, curves downward, then moves right to card center
-      // Control point 1: Curve downward (below CLIMB position)
-      const control1X = climbPositionX; // Same X as start
-      const control1Y = climbPositionY + 80; // Move down significantly
-      
-      // Control point 2: Move right toward card (before reaching card)
-      const control2X = climbPositionX + (targetX - climbPositionX) * 0.6; // 60% of the way horizontally
-      const control2Y = targetY - 20; // Slightly above target (card center)
+      const control1X = startX;
+      const control1Y = startY + 80;
+      const control2X = startX + (targetX - startX) * 0.6;
+      const control2Y = targetY - 20;
       
       const animatePointer = () => {
         const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Linear progress for constant speed throughout (no easing)
-        const t = progress;
+        const rawProgress = Math.min(elapsed / duration, 1);
+        const t = easeInOutCubic(rawProgress);
         const mt = 1 - t;
         const mt2 = mt * mt;
         const mt3 = mt2 * mt;
         const t2 = t * t;
         const t3 = t2 * t;
         
-        // Cubic Bezier: (1-t)³P₀ + 3(1-t)²tP₁ + 3(1-t)t²P₂ + t³P₃
-        const currentX = mt3 * climbPositionX + 
-                         3 * mt2 * t * control1X + 
-                         3 * mt * t2 * control2X + 
-                         t3 * targetX;
-        const currentY = mt3 * climbPositionY + 
-                         3 * mt2 * t * control1Y + 
-                         3 * mt * t2 * control2Y + 
-                         t3 * targetY;
+        const currentX = mt3 * startX + 3 * mt2 * t * control1X + 3 * mt * t2 * control2X + t3 * targetX;
+        const currentY = mt3 * startY + 3 * mt2 * t * control1Y + 3 * mt * t2 * control2Y + t3 * targetY;
         
-        setClimbPointerPosition({ x: currentX, y: currentY });
+        climbPointerPositionRef.current = { x: currentX, y: currentY };
+        updatePointerFromContainerCoords(currentX, currentY);
         
-        if (progress < 1) {
+        if (rawProgress < 1) {
           requestAnimationFrame(animatePointer);
         } else {
-          // Animation complete - ensure we're exactly at center of card
+          climbPointerPositionRef.current = { x: targetX, y: targetY };
           setClimbPointerPosition({ x: targetX, y: targetY });
           
           // Add click animation (brief scale down/up effect)
@@ -511,6 +607,7 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
               if (containerRect) {
                 cardClickX = centerX - containerRect.left;
                 cardClickY = centerY - containerRect.top;
+                climbPointerPositionRef.current = { x: cardClickX, y: cardClickY };
                 setClimbPointerPosition({ x: cardClickX, y: cardClickY });
               }
               
@@ -559,12 +656,11 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
     }, 500); // Wait 500ms after CLIMB label appears
     
     return () => clearTimeout(startAnimation);
-  }, [showClimbLabel, showMovingIcon, barWidth, isClimbPointerAnimating]);
+  }, [showClimbLabel, showMovingIcon, barWidth, isClimbPointerAnimating, onRequestFJBPrompt, fjbThemeComplete]);
 
-  // Manage pointer element via direct DOM manipulation to ensure it appears after tooltip/bubble
+  // Effect A: Create/remove pointer only - no position deps to prevent remove/recreate flicker
   useEffect(() => {
     if (!showClimbPointer || !showMovingIcon) {
-      // Remove pointer when not needed
       if (pointerElementRef.current) {
         pointerElementRef.current.remove();
         pointerElementRef.current = null;
@@ -572,42 +668,58 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
       return;
     }
 
-    // Create or update pointer element
     if (!pointerElementRef.current) {
       pointerElementRef.current = document.createElement('div');
       pointerElementRef.current.className = 'dummy-mouse-pointer';
       pointerElementRef.current.id = 'climb-dummy-pointer';
-      // Append to body - this ensures it's added AFTER tooltip/bubble in DOM order
       document.body.appendChild(pointerElementRef.current);
     }
 
-    // Update position and styles - useEffect already runs on position changes for smooth updates
-    const containerRect = barRef.current?.getBoundingClientRect();
-    const left = climbPointerPosition.x + (containerRect?.left || 0);
-    const top = climbPointerPosition.y + (containerRect?.top || 0);
-    const transform = `translate(-50%, -50%) ${isClimbPointerClicking ? 'scale(0.7)' : 'scale(1)'}`;
-    // Disable transition during animation for smooth path following, only use for click animation
-    const transition = isClimbPointerClicking ? 'transform 0.1s ease' : 'none';
-
-    pointerElementRef.current.style.cssText = `
+    const baseStyles = `
       position: fixed !important;
-      left: ${left}px;
-      top: ${top}px;
       z-index: 2147483647 !important;
       pointer-events: none;
-      transform: ${transform};
-      transition: ${transition};
+      will-change: transform;
+      visibility: visible !important;
       --cursor-svg-url: url(${typeof window !== 'undefined' ? `${window.location.origin}${process.env.PUBLIC_URL || ''}` : ''}/cursor-themer.svg);
     `;
+    pointerElementRef.current.style.cssText = baseStyles;
 
-    // Cleanup on unmount
     return () => {
-      if (pointerElementRef.current) {
-        pointerElementRef.current.remove();
-        pointerElementRef.current = null;
+      if (!showClimbPointer || !showMovingIcon) {
+        if (pointerElementRef.current) {
+          pointerElementRef.current.remove();
+          pointerElementRef.current = null;
+        }
       }
     };
-  }, [showClimbPointer, showMovingIcon, climbPointerPosition.x, climbPointerPosition.y, isClimbPointerClicking, isClimbPointerAnimating]);
+  }, [showClimbPointer, showMovingIcon]);
+
+  // Effect B: Update position and transform only - no cleanup to prevent flicker during animation
+  // Skip position update when FJB theme pointer is animating (Paris/Save) - that animation uses viewport coords directly
+  useEffect(() => {
+    if (!pointerElementRef.current || !showClimbPointer || !showMovingIcon) return;
+    if (isFJBThemePointerAnimatingRef.current) {
+      // Only update transform for click animation, don't overwrite position
+      pointerElementRef.current.style.transform = `translate(-50%, -50%) ${isClimbPointerClicking ? 'scale(0.7)' : 'scale(1)'}`;
+      pointerElementRef.current.style.transition = isClimbPointerClicking ? 'transform 0.1s ease' : 'none';
+      document.body.appendChild(pointerElementRef.current);
+      return;
+    }
+
+    const pos = climbPointerPosition;
+    const containerRect = barRef.current?.getBoundingClientRect();
+    const left = (containerRect?.left ?? 0) + pos.x;
+    const top = (containerRect?.top ?? 0) + pos.y;
+    const transform = `translate(-50%, -50%) ${isClimbPointerClicking ? 'scale(0.7)' : 'scale(1)'}`;
+    const transition = isClimbPointerClicking ? 'transform 0.1s ease' : 'none';
+
+    pointerElementRef.current.style.left = `${left}px`;
+    pointerElementRef.current.style.top = `${top}px`;
+    pointerElementRef.current.style.transform = transform;
+    pointerElementRef.current.style.transition = transition;
+    document.body.appendChild(pointerElementRef.current); // Keep on top layer
+  }, [showClimbPointer, showMovingIcon, climbPointerPosition.x, climbPointerPosition.y, isClimbPointerClicking]);
 
   // Animation sequence: move to prompt bubble, type "Perfume" in title and desc, then save
   const animateTypingSequence = (titleInput, descInput, container, startPosition) => {
@@ -615,14 +727,6 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
     
     const containerRect = container.getBoundingClientRect();
     const inputRect = titleInput.getBoundingClientRect();
-    
-    // DEBUG: Log positions to understand the coordinate system
-    console.log('=== POINTER POSITIONING DEBUG ===', {
-      containerRect: { top: containerRect.top, left: containerRect.left },
-      inputRect: { top: inputRect.top, left: inputRect.left, height: inputRect.height },
-      promptBubble: document.getElementById('locked-remix-panel')?.getBoundingClientRect(),
-      scrollY: window.pageYOffset || document.documentElement.scrollTop
-    });
     
     // Calculate position of title input relative to container
     // The prompt bubble uses position:fixed, so inputRect is in viewport coordinates
@@ -634,42 +738,31 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
     // Both inputRect.top and containerRect.top are viewport coordinates, so subtraction gives relative position
     const inputY = inputRect.top + (inputRect.height * 0.25) - containerRect.top;
     
-    console.log('=== CALCULATED POINTER POSITION ===', {
-      inputX,
-      inputY,
-      calculatedFrom: {
-        inputTop: inputRect.top,
-        containerTop: containerRect.top,
-        difference: inputRect.top - containerRect.top,
-        inputHeight: inputRect.height,
-        finalY: inputY
-      }
-    });
+    const moveDuration = 1000;
+    const startX = startPosition ? startPosition.x : climbPointerPositionRef.current.x;
+    const startY = startPosition ? startPosition.y : climbPointerPositionRef.current.y;
     
-    // Move pointer to title input (slowly) - start from card click position, not CLIMB position
-    const moveDuration = 1000; // 1 second to move to input
-    const startX = startPosition ? startPosition.x : climbPointerPosition.x;
-    const startY = startPosition ? startPosition.y : climbPointerPosition.y;
-    
-    // Set initial position to card click position
+    climbPointerPositionRef.current = { x: startX, y: startY };
     setClimbPointerPosition({ x: startX, y: startY });
-    setShowClimbPointer(true); // Ensure pointer is visible
+    setShowClimbPointer(true);
     
     const moveStartTime = Date.now();
     
     const moveToInput = () => {
       const elapsed = Date.now() - moveStartTime;
-      const progress = Math.min(elapsed / moveDuration, 1);
+      const rawProgress = Math.min(elapsed / moveDuration, 1);
+      const progress = easeInOutCubic(rawProgress);
       
       const currentX = startX + (inputX - startX) * progress;
       const currentY = startY + (inputY - startY) * progress;
       
-      setClimbPointerPosition({ x: currentX, y: currentY });
+      climbPointerPositionRef.current = { x: currentX, y: currentY };
+      updatePointerFromContainerCoords(currentX, currentY);
       
-      if (progress < 1) {
+      if (rawProgress < 1) {
         requestAnimationFrame(moveToInput);
       } else {
-        // At input field - click on it
+        climbPointerPositionRef.current = { x: inputX, y: inputY };
         setClimbPointerPosition({ x: inputX, y: inputY });
         
         setTimeout(() => {
@@ -773,17 +866,19 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
                     
                     const moveToDesc = () => {
                       const elapsed = Date.now() - descMoveStartTime;
-                      const progress = Math.min(elapsed / descMoveDuration, 1);
+                      const rawProgress = Math.min(elapsed / descMoveDuration, 1);
+                      const progress = easeInOutCubic(rawProgress);
                       
                       const currentX = descStartX + (descX - descStartX) * progress;
                       const currentY = descStartY + (descY - descStartY) * progress;
                       
-                      setClimbPointerPosition({ x: currentX, y: currentY });
+                      climbPointerPositionRef.current = { x: currentX, y: currentY };
+                      updatePointerFromContainerCoords(currentX, currentY);
                       
-                      if (progress < 1) {
+                      if (rawProgress < 1) {
                         requestAnimationFrame(moveToDesc);
                       } else {
-                        // At description field - click on it
+                        climbPointerPositionRef.current = { x: descX, y: descY };
                         setClimbPointerPosition({ x: descX, y: descY });
                         
                         setTimeout(() => {
@@ -851,17 +946,19 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
                                   
                                   const moveToSave = () => {
                                     const elapsed = Date.now() - saveMoveStartTime;
-                                    const progress = Math.min(elapsed / saveMoveDuration, 1);
+                                    const rawProgress = Math.min(elapsed / saveMoveDuration, 1);
+                                    const progress = easeInOutCubic(rawProgress);
                                     
                                     const currentX = saveStartX + (saveX - saveStartX) * progress;
                                     const currentY = saveStartY + (saveY - saveStartY) * progress;
                                     
-                                    setClimbPointerPosition({ x: currentX, y: currentY });
+                                    climbPointerPositionRef.current = { x: currentX, y: currentY };
+                                    updatePointerFromContainerCoords(currentX, currentY);
                                     
-                                    if (progress < 1) {
+                                    if (rawProgress < 1) {
                                       requestAnimationFrame(moveToSave);
                                     } else {
-                                      // At save button - ensure pointer is at exact center
+                                      climbPointerPositionRef.current = { x: saveX, y: saveY };
                                       setClimbPointerPosition({ x: saveX, y: saveY });
                                       
                                       // Brief pause to show pointer at save button
