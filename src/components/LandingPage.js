@@ -1926,6 +1926,7 @@ export default function LandingPage() {
                     onProgressChange={handleProgressChange} 
                     themeColor={mockThemeColor}
                     isPromptMode={false}
+                    contentStartDelay={3300}
                     onPromptHover={() => {}}
                     onPromptClick={() => {}}
                     fpsPrompts={{}}

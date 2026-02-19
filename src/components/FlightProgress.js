@@ -18,7 +18,7 @@ function formatTime(minutes) {
   return `LANDING IN ${h}H ${m.toString().padStart(2, '0')}M`;
 }
 
-export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFlightMinutes = 370, minutesLeft: externalMinutesLeft, onProgressChange, themeColor = '#1E72AE', isPromptMode = false, onPromptHover, onPromptClick, fpsPrompts = {}, showMovingIcon = false, onAnimationProgressChange, onPromoCardLoadingChange, onAnimationProgress, onCruiseLabelShow, onMiddleCardPromptClose, onThemeColorChange, onRequestFJBPrompt, fjbThemeComplete = false, showFJBPrompt = false, onFJBThemeApplyRequest, flightsGenerated = false, onFlightPhaseSelect, selectedFlightPhase = null }) {
+export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFlightMinutes = 370, minutesLeft: externalMinutesLeft, onProgressChange, themeColor = '#1E72AE', isPromptMode = false, onPromptHover, onPromptClick, fpsPrompts = {}, showMovingIcon = false, onAnimationProgressChange, onPromoCardLoadingChange, onAnimationProgress, onCruiseLabelShow, onMiddleCardPromptClose, onThemeColorChange, onRequestFJBPrompt, fjbThemeComplete = false, showFJBPrompt = false, onFJBThemeApplyRequest, flightsGenerated = false, onFlightPhaseSelect, selectedFlightPhase = null, contentStartDelay = 1000 }) {
   
   // Helper function to determine color based on theme type
   const getElementColor = () => {
@@ -481,10 +481,10 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
       return () => cancelAnimationFrame(animationId);
     };
 
-    // Start animation after a delay to ensure DOM is ready
-    const timer = setTimeout(startAnimation, 1000); // 1 second delay
+    // Start animation after a delay to ensure DOM is ready (or after landing entrance sequence)
+    const timer = setTimeout(startAnimation, contentStartDelay);
     return () => clearTimeout(timer);
-  }, [showMovingIcon, showTakeoffLabel, showCruiseLabel, showClimbLabel, hasReachedTarget]);
+  }, [showMovingIcon, showTakeoffLabel, showCruiseLabel, showClimbLabel, hasReachedTarget, contentStartDelay]);
 
   // Animation when CLIMB phase is reached: move pointer to 2nd promo card and open tooltip
   // If onRequestFJBPrompt exists (Landing Page), wait for fjbThemeComplete first; otherwise run immediately
