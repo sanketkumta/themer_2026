@@ -726,16 +726,26 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
     document.body.appendChild(pointerElementRef.current); // Keep on top layer
   }, [showClimbPointer, showMovingIcon, climbPointerPosition.x, climbPointerPosition.y, isClimbPointerClicking]);
 
-  // On scroll/resize: keep pointer aligned with bubble or last position
+  // Pin pointer to anchor (theme/prompt bubble elements) - continuous sync so scroll has no impact
   useEffect(() => {
     const sync = () => syncPointerToAnchorOrPosition();
-    window.addEventListener('scroll', sync, true); // capture so we catch scroll in any container
+    window.addEventListener('scroll', sync, true);
     window.addEventListener('resize', sync);
+    // rAF loop: when anchored to bubble element, keep pointer pinned (scroll/layout won't affect position)
+    let rafId;
+    const tick = () => {
+      if (pointerAnchorRef.current?.isConnected && pointerElementRef.current && showClimbPointer && showMovingIcon) {
+        sync();
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
     return () => {
       window.removeEventListener('scroll', sync, true);
       window.removeEventListener('resize', sync);
+      cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [showClimbPointer, showMovingIcon]);
 
   // Animation sequence: move to prompt bubble, type "Perfume" in title and desc, then save
   const animateTypingSequence = (titleInput, descInput, container, startPosition) => {

@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1px; /* Border thickness - reduced stroke width */
+  padding: 1px; /* Border/stroke thickness (all 4 sides) */
   border-radius: 0 24px 24px 24px;
   background: linear-gradient(
     90deg,
@@ -45,7 +45,7 @@
   justify-content: center;
   flex: 1;
   width: 100%;
-  min-height: 42px;
+  min-height: 46px;
   background: rgba(15, 23, 42, 0.95);
   border-radius: 0 23px 23px 23px;
   color: #ffffff;
