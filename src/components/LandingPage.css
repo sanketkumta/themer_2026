@@ -1,0 +1,64 @@
+/* Rainbow Glow Button - animated gradient border, no rotation */
+.rainbow-glow-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px; /* Border thickness */
+  border-radius: 0 24px 24px 24px;
+  background: linear-gradient(
+    90deg,
+    #3b82f6,
+    #06b6d4,
+    #22c55e,
+    #eab308,
+    #f97316,
+    #ec4899,
+    #8b5cf6,
+    #3b82f6
+  );
+  background-size: 400% 100%;
+  animation: rainbowFlow 4s ease-in-out infinite;
+  box-shadow:
+    0 0 12px rgba(59, 130, 246, 0.5),
+    0 0 20px rgba(139, 92, 246, 0.4),
+    0 0 28px rgba(236, 72, 153, 0.3);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rainbow-glow-btn:hover {
+  transform: scale(1.02);
+  box-shadow:
+    0 0 16px rgba(59, 130, 246, 0.6),
+    0 0 24px rgba(139, 92, 246, 0.5),
+    0 0 32px rgba(236, 72, 153, 0.4);
+}
+
+.rainbow-glow-btn:active {
+  transform: scale(0.98);
+}
+
+.rainbow-glow-btn-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+  min-height: 42px;
+  background: rgba(15, 23, 42, 0.95);
+  border-radius: 0 21px 21px 21px;
+  color: #ffffff;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+@keyframes rainbowFlow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}

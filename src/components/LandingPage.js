@@ -1,3 +1,4 @@
+import './LandingPage.css';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
@@ -1862,26 +1863,12 @@ export default function LandingPage() {
                     onClick={() => {
                       navigate('/dashboard');
                     }}
-                    className="shadow-md cursor-pointer transition-all duration-200 hover:opacity-90"
-                    style={{
-                      width: '200px',
-                      height: '48px',
-                      borderTopLeftRadius: '0px',
-                      borderTopRightRadius: '24px',
-                      borderBottomLeftRadius: '24px',
-                      borderBottomRightRadius: '24px',
-                      backgroundColor: '#2563eb',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
+                    className="rainbow-glow-btn"
+                    style={{ width: '200px', height: '48px' }}
                   >
-                    <span
-                      className="text-lg font-semibold"
-                      style={{ color: '#FFFFFF' }}
-                    >
+                    <div className="rainbow-glow-btn-inner">
                       Build themes
-                    </span>
+                    </div>
                   </div>
                 </div>
               </div>
