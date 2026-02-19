@@ -231,7 +231,7 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
         pointerAnchorRef.current = parisChip; // Track for scroll adaptation
         updatePointerViewport(parisCenterX, parisCenterY);
         
-        const moveDuration = 600;
+        const moveDuration = 900; // Paris -> Save (slightly slower)
         
         // Click Paris (pointer already there), then animate Paris -> Save
         setIsClimbPointerClicking(true);
@@ -271,8 +271,8 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
                   }
             };
             requestAnimationFrame(animateToSave);
-          }, 800); // Wait for React to process Paris selection and enable Save button
-        }, 150);
+          }, 1000); // Wait for React to process Paris selection and enable Save button
+        }, 200);
       });
       return true;
     };
