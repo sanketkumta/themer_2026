@@ -231,7 +231,7 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
         pointerAnchorRef.current = parisChip; // Track for scroll adaptation
         updatePointerViewport(parisCenterX, parisCenterY);
         
-        const moveDuration = 900; // Paris -> Save (slightly slower)
+        const moveDuration = 1500; // Paris -> Save
         
         // Click Paris (pointer already there), then animate Paris -> Save
         setIsClimbPointerClicking(true);
@@ -267,12 +267,12 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
                         setClimbPointerPosition({ x: saveX, y: saveY });
                       }
                       if (onFJBThemeApplyRequest) onFJBThemeApplyRequest('#FF6B6B');
-                    }, 150);
+                    }, 250);
                   }
             };
             requestAnimationFrame(animateToSave);
-          }, 1000); // Wait for React to process Paris selection and enable Save button
-        }, 200);
+          }, 1500); // Wait for React to process Paris selection and enable Save button
+        }, 300);
       });
       return true;
     };
