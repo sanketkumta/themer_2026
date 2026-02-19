@@ -12,6 +12,7 @@ import { useStateLeakageDetection } from '../utils/stateLeakageDetector';
 export default function Component3Cards({ 
   themeColor = '#1E1E1E', 
   routes = [], 
+  showMovingIcon = false,
   isPromptMode = false, 
   onPromptHover, 
   onPromptClick, 
@@ -536,7 +537,7 @@ export default function Component3Cards({
             border-radius: 0 24px 24px 24px;
             font-size: 12px;
             z-index: 2147483647;
-            pointer-events: auto;
+            pointer-events: ${showMovingIcon ? 'none' : 'auto'};
             white-space: nowrap;
             display: flex;
             align-items: center;
@@ -610,7 +611,7 @@ export default function Component3Cards({
                 const remixContainer = document.createElement('div');
                 remixContainer.id = 'locked-remix-panel';
                 remixContainer.className = 'px-4 py-3 flex flex-col items-center';
-                remixContainer.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + (rect.bottom + 8) + 'px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px;border-radius:0 24px 24px 24px';
+                remixContainer.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + (rect.bottom + 8) + 'px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px;border-radius:0 24px 24px 24px' + (showMovingIcon ? ';pointer-events:none' : '');
 
                 // Create the text paragraph with contenteditable spans (exact same as built-in)
                 const textDiv = document.createElement('div');
@@ -1100,7 +1101,7 @@ export default function Component3Cards({
                 border-radius: 0 24px 24px 24px;
                 font-size: 12px;
                 z-index: 2147483647;
-                pointer-events: auto;
+                pointer-events: ${showMovingIcon ? 'none' : 'auto'};
                 white-space: nowrap;
                 display: flex;
                 align-items: center;
@@ -1161,7 +1162,7 @@ export default function Component3Cards({
             const remixContainer = document.createElement('div');
             remixContainer.id = 'locked-remix-panel';
             remixContainer.className = 'px-4 py-3 flex flex-col items-center';
-            remixContainer.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + (rect.bottom + 8) + 'px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px;border-radius:0 24px 24px 24px';
+            remixContainer.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + (rect.bottom + 8) + 'px;z-index:2147483647;background-color:#1C1C1C;border:1px solid rgba(255,255,255,0.2);width:312px;gap:40px;box-shadow:rgba(0,0,0,0.35) 0px 8px 20px;border-radius:0 24px 24px 24px' + (showMovingIcon ? ';pointer-events:none' : '');
 
             // Create the text paragraph with contenteditable spans (exact same as built-in)
             const textDiv = document.createElement('div');

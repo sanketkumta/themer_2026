@@ -221,6 +221,28 @@ export default function LandingPage() {
     }
   }, []);
 
+  // Adapt theme bubble and hover tip to scroll - same as prompt bubble (recalc from FJB element)
+  useEffect(() => {
+    if (!showFJBPrompt) return;
+    const syncPosition = () => {
+      const fjbElement = document.querySelector('[data-name="flight journey bar"]');
+      if (fjbElement) {
+        const rect = fjbElement.getBoundingClientRect();
+        setFJBPromptPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        });
+      }
+    };
+    syncPosition();
+    window.addEventListener('scroll', syncPosition, true); // capture for scroll in any container
+    window.addEventListener('resize', syncPosition);
+    return () => {
+      window.removeEventListener('scroll', syncPosition, true);
+      window.removeEventListener('resize', syncPosition);
+    };
+  }, [showFJBPrompt]);
+
   const handleFJBPromptSubmit = (promptText, elementType, elementData, positionKey) => {
     setShowFJBPrompt(false);
     
@@ -1934,6 +1956,7 @@ export default function LandingPage() {
               <Component3Cards 
                 themeColor={mockThemeColor} 
                 routes={mockRoutes}
+                showMovingIcon={showMovingIcon}
                 isPromptMode={hasReachedClimb && cruiseLabelShown && fjbThemeComplete && !middleCardPromptClosed}
                 onPromptHover={() => {}}
                 onPromptClick={hasReachedClimb ? handleMiddleCardPromptClick : () => {}} // Disable clicks before climb
@@ -2001,7 +2024,6 @@ export default function LandingPage() {
                 />,
                 document.body
               )}
-
               {/* Debug Info */}
               {console.log('=== COMPONENT RENDER DEBUG ===', {
                 cruiseLabelShown,
