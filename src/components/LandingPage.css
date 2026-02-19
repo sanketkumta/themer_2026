@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 3px; /* Border thickness */
+  padding: 1px; /* Border thickness - reduced stroke width */
   border-radius: 0 24px 24px 24px;
   background: linear-gradient(
     90deg,
@@ -47,7 +47,7 @@
   width: 100%;
   min-height: 42px;
   background: rgba(15, 23, 42, 0.95);
-  border-radius: 0 21px 21px 21px;
+  border-radius: 0 23px 23px 23px;
   color: #ffffff;
   font-size: 1.125rem;
   font-weight: 600;

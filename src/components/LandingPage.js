@@ -1857,17 +1857,6 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#E9EFF5' }}>
-      {/* Header */}
-      <header className="absolute inset-x-0 top-0 z-50">
-        <nav className="flex items-center justify-between p-6 lg:px-8">
-          <div className="flex lg:flex-1">
-            <a href="/" className="-m-1.5 p-1.5">
-              <span className="text-2xl font-bold themer-gradient">Themer</span>
-            </a>
-          </div>
-        </nav>
-      </header>
-
       <main className="relative isolate">
         {/* Hero section */}
         <div className="overflow-hidden">
