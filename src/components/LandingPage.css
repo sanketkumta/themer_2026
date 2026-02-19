@@ -62,3 +62,34 @@
     background-position: 100% 50%;
   }
 }
+
+/* Landing page staggered entrance animation - does not alter final layout */
+@keyframes landingEntrance {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.landing-entrance-1 {
+  opacity: 0;
+  animation: landingEntrance 0.5s ease forwards;
+  animation-delay: 0ms;
+}
+.landing-entrance-2 {
+  opacity: 0;
+  animation: landingEntrance 0.5s ease forwards;
+  animation-delay: 300ms;
+}
+.landing-entrance-3 {
+  opacity: 0;
+  animation: landingEntrance 0.5s ease forwards;
+  animation-delay: 600ms;
+}
+.landing-entrance-4 {
+  opacity: 0;
+  animation: landingEntrance 0.5s ease forwards;
+  animation-delay: 900ms;
+}

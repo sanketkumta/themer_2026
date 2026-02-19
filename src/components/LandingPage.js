@@ -1867,13 +1867,13 @@ export default function LandingPage() {
           <div className="mx-auto max-w-7xl px-6 pb-4 pt-36 sm:pt-60 lg:px-8 lg:pt-32">
             <div className="mx-auto max-w-4xl gap-x-20 lg:mx-0 lg:flex lg:max-w-none lg:items-center lg:justify-center">
               <div className="w-full max-w-3xl lg:basis-1/2 xl:basis-1/2 lg:shrink-0 xl:max-w-3xl flex flex-col items-center text-center">
-                <h1 className="text-6xl font-extrabold tracking-tight text-gray-900 whitespace-nowrap text-center">
+                <h1 className="landing-entrance-1 text-6xl font-extrabold tracking-tight text-gray-900 whitespace-nowrap text-center">
                   Personalize in-flight experiences.
                 </h1>
-                <p className="relative mt-6 text-lg leading-8 text-gray-600 sm:max-w-md lg:max-w-none text-center whitespace-nowrap">
+                <p className="landing-entrance-2 relative mt-6 text-lg leading-8 text-gray-600 sm:max-w-md lg:max-w-none text-center whitespace-nowrap">
                   Curate experiences your passengers would love.
                 </p>
-                <div className="mt-10 flex items-center justify-center">
+                <div className="landing-entrance-3 mt-10 flex items-center justify-center">
                   <div
                     onClick={() => {
                       navigate('/dashboard');
@@ -1894,7 +1894,7 @@ export default function LandingPage() {
         
         {/* Theme Preview Section - unclickable during demo */}
         <div 
-          className="w-full flex justify-center" 
+          className="landing-entrance-4 w-full flex justify-center" 
           style={{ marginTop: 0, pointerEvents: showMovingIcon ? 'none' : 'auto' }}
         >
           <div style={{ position: 'relative', width: 1400, height: 1100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
