@@ -659,7 +659,19 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
     return () => clearTimeout(startAnimation);
   }, [showClimbLabel, showMovingIcon, barWidth, isClimbPointerAnimating, onRequestFJBPrompt, fjbThemeComplete]);
 
+  // On unmount (e.g. navigate to Dashboard): remove pointer so it never appears on other pages
+  useEffect(() => {
+    return () => {
+      if (pointerElementRef.current) {
+        pointerElementRef.current.remove();
+        pointerElementRef.current = null;
+      }
+      pointerAnchorRef.current = null;
+    };
+  }, []);
+
   // Effect A: Create/remove pointer only - no position deps to prevent remove/recreate flicker
+  // Pointer only exists when showMovingIcon (landing page demo); Dashboard never passes it
   useEffect(() => {
     if (!showClimbPointer || !showMovingIcon) {
       pointerAnchorRef.current = null;
@@ -1019,12 +1031,11 @@ export default function FlightProgress({ landingIn = "LANDING IN 2H 55M", maxFli
                                             saveButton.click();
                                           }
                                           
-                                          // Reset click animation, then hide pointer after Save on prompt bubble
+                                          // Reset click animation - keep pointer visible on landing page (never disappear)
                                           setTimeout(() => {
                                             setIsClimbPointerClicking(false);
                                             isPointerSequenceActiveRef.current = false;
                                             pointerAnchorRef.current = null;
-                                            setShowClimbPointer(false); // Disappear after Save on prompt bubble
                                           }, 300);
                                         }, 200); // Show click animation for 200ms
                                       }, 200); // Pause before clicking
