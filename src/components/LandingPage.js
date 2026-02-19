@@ -1779,7 +1779,7 @@ export default function LandingPage() {
               {isRecommendedCardImageLoading(cardIndex) && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
                   <div className="flex flex-col items-center space-y-2">
-                    <div className="w-6 h-6 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="rainbow-loading-spinner" />
                     <span className="text-xs text-gray-600">Loading image...</span>
                   </div>
                 </div>

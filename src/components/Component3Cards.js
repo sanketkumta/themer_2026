@@ -1485,7 +1485,7 @@ export default function Component3Cards({
                   {isImageLoading(originalCardIndex) && (
                     <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
                       <div className="flex flex-col items-center space-y-2">
-                        <ArrowPathIcon className="w-6 h-6 animate-spin text-gray-600" />
+                        <div className="rainbow-loading-spinner" />
                         <span className="text-xs text-gray-600">Loading image...</span>
                       </div>
                     </div>
@@ -1854,7 +1854,7 @@ export default function Component3Cards({
               >
                 {remixLoading ? (
                   <div className="flex items-center space-x-2">
-                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                    <div className="rainbow-loading-spinner small" />
                     <span>Remixing...</span>
                   </div>
                 ) : (

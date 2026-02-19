@@ -231,3 +231,43 @@ code {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
+
+/* Rainbow loading spinner - matches rainbow button aesthetic */
+@keyframes rainbow-loading-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.rainbow-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    #3b82f6,
+    #06b6d4,
+    #22c55e,
+    #eab308,
+    #f97316,
+    #ec4899,
+    #8b5cf6,
+    #3b82f6
+  );
+  animation: rainbow-loading-spin 1s linear infinite;
+  position: relative;
+  flex-shrink: 0;
+}
+.rainbow-loading-spinner::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: #f3f4f6; /* bg-gray-100 - matches card overlay */
+}
+.rainbow-loading-spinner.small {
+  width: 16px;
+  height: 16px;
+}
+.rainbow-loading-spinner.small::after {
+  inset: 2px;
+}
