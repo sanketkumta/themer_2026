@@ -1153,10 +1153,7 @@ function FrameContent({ origin, destination, minutesLeft, landingIn, maxFlightMi
               {/* Loading spinner */}
               {isContentCardImageLoading(originalCardIndex) && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
-                  <div className="flex flex-col items-center space-y-2">
-                    <div className="rainbow-loading-spinner" />
-                    <span className="text-xs text-gray-600">Loading image...</span>
-                  </div>
+                  <div className="rainbow-loading-spinner" />
                 </div>
               )}
               
